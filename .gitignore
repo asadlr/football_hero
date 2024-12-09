@@ -1,0 +1,43 @@
+# Flutter-related
+/.dart_tool/
+/.packages
+/.flutter-plugins
+/.flutter-plugins-dependencies
+/.metadata
+build/
+/android/.gradle/
+/android/app/proguard-rules.pro
+*.iml
+.idea/
+/ios/Flutter/Flutter.framework
+/ios/Flutter/Flutter.podspec
+/ios/.symlinks/
+/ios/Pods/
+/ios/Runner.xcworkspace/
+/macos/Flutter/ephemeral/
+/web/.dart_tool/
+/web/packaging/
+linux/flutter/ephemeral/
+windows/flutter/ephemeral/
+*.log
+
+# Supabase environment file
+/assets/.env
+
+# VS Code
+.vscode/
+
+# IntelliJ
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Other
+*.lock
