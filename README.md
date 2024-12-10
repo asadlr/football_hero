@@ -1,16 +1,31 @@
-# football_hero
+# Football Hero
 
-A new Flutter project.
+**Author**: Asaf Adler  
+**Email**: asaf.adler@gmail.com  
 
-## Getting Started
+## Project Overview
 
-This project is a starting point for a Flutter application.
+Football Hero is a basic Flutter application using Supabase for backend services. This repository contains the minimal working version of the app.
 
-A few resources to get you started if this is your first Flutter project:
+---
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Software Versions Used
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+The following software versions were tested and confirmed to work together:
+
+- **Flutter**: 3.24.5  
+- **Dart**: 3.5.4  
+- **Supabase Flutter SDK**: 2.8.1  
+- **Gradle**: 8.11.1  
+- **Android Studio**: Flamingo 2024.2  
+- **Java**: Eclipse Adoptium JDK 17.0.13.11  
+- **flutter_dotenv**: 5.2.1  
+
+---
+
+## Setup Instructions
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/asadlr/football_hero.git
+cd football_hero

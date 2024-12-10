@@ -10,6 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  url_launcher: ^6.1.7 # Required for opening external URLs
   path_provider: ^2.0.13
   supabase_flutter: ^2.8.1
   flutter_dotenv: ^5.2.1
@@ -24,4 +25,5 @@ flutter:
   uses-material-design: true
   assets:
     - assets/.env
+    - assets/images/welcomeBackground.webp
 
