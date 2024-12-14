@@ -41,3 +41,7 @@ Thumbs.db
 
 # Other
 *.lock
+
+
+# Ignore PSD folder
+assets/images/psd/

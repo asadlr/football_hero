@@ -10,7 +10,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  url_launcher: ^6.1.7 # Required for opening external URLs
+  flutter_localizations:
+    sdk: flutter
+  url_launcher: ^6.1.7 
   path_provider: ^2.0.13
   supabase_flutter: ^2.8.1
   flutter_dotenv: ^5.2.1
@@ -25,5 +27,12 @@ flutter:
   uses-material-design: true
   assets:
     - assets/.env
+    - assets/images/logo.png
     - assets/images/welcomeBackground.webp
-
+  fonts:
+    - family: RubikDirt # Secondery font for Buttons or Containers Text
+      fonts:
+        - asset: assets/fonts/RubikDirt-Regular.ttf
+    - family: VarelaRound # Main Font
+      fonts:
+        - asset: assets/fonts/VarelaRound-Regular.ttf

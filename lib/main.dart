@@ -1,31 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'screens/welcome_screen.dart';
+import 'package:football_hero/screens/welcome_screen.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    // Load environment variables
-    await dotenv.load(fileName: "assets/.env");
-
-    // Initialize Supabase
-    await Supabase.initialize(
-      url: dotenv.env['SUPABASE_URL'] ?? '',
-      anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
-    );
-
-    runApp(const MyApp());
-  } catch (e) {
-    runApp(MaterialApp(
-      home: Scaffold(
-        body: Center(
-          child: Text('Initialization error: $e'),
-        ),
-      ),
-    ));
-  }
+void main() {
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -35,7 +12,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Football Hero',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        fontFamily: 'VarelaRound',// Main font
+        ),
       initialRoute: '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
@@ -49,7 +29,7 @@ class MyApp extends StatelessWidget {
 class PlaceholderScreen extends StatelessWidget {
   final String title;
 
-  const PlaceholderScreen({required this.title, Key? key}) : super(key: key);
+  const PlaceholderScreen({required this.title, super.key});
 
   @override
   Widget build(BuildContext context) {

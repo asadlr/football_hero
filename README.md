@@ -1,31 +1,60 @@
-# Football Hero
+# FootballHero Styling Documentation
 
-**Author**: Asaf Adler  
-**Email**: asaf.adler@gmail.com  
+## Fonts
+The following fonts are used in the FootballHero app:
 
-## Project Overview
+### Main Fonts
+- **RubikDirt**: Used for buttons (e.g., "Join the Team" and "Log In").
+  - **Size**: 28px
+  - **Style**: Italic, lighter weight (w300)
+  - **Color**: White for the "Join the Team" button and black for the "Log In" button.
 
-Football Hero is a basic Flutter application using Supabase for backend services. This repository contains the minimal working version of the app.
+- **VarelaRound**: Used for informational text and links (e.g., HoodHero Info Link).
+  - **Size**: 16px
+  - **Style**: Italic, lighter weight (w300)
+  - **Color**: White with underline for emphasis.
+
+## Theme Preferences
+
+### Colors
+- **Primary Gradient for Buttons**:
+  - Start: `Colors.blue.shade300`
+  - End: `Colors.blue.shade700`
+
+- **Text Colors**:
+  - Button Text:
+    - White for "Join the Team"
+    - Black for "Log In"
+  - Link Text: White
+
+### Shadows
+- **Sign-Up Button**:
+  - **Color**: `Colors.blue.shade900` (with 50% opacity)
+  - **Blur Radius**: 10px
+  - **Offset**: (3, 4)
+
+- **Log-In Button**:
+  - **Color**: Black (with 25% opacity)
+  - **Blur Radius**: 10px
+  - **Offset**: (3, 4)
+
+### Accessibility
+- **Font Size**: Buttons and links use large, readable sizes (28px and 16px, respectively).
+- **Contrast**: Ensures sufficient contrast between text and background for readability.
+- **ARIA-like Labels**:
+  - Buttons include `ValueKey` identifiers for screen readers.
+- **Spacing**:
+  - Consistent padding and spacing (e.g., `30px` between elements) for easy navigation.
+
+### Animations
+- **AnimatedSwitcher**: Applied to button text for a smooth transition effect when buttons are interacted with.
+  - **Duration**: 200ms
+
+## Assets
+- **Background Image**:
+  - File: `assets/images/welcomeBackground.webp`
+  - Style: Covers entire screen with `BoxFit.cover` for responsive scaling.
 
 ---
+This document provides a concise overview of the app's styling and accessibility considerations. Ensure all future updates align with these guidelines.
 
-## Software Versions Used
-
-The following software versions were tested and confirmed to work together:
-
-- **Flutter**: 3.24.5  
-- **Dart**: 3.5.4  
-- **Supabase Flutter SDK**: 2.8.1  
-- **Gradle**: 8.11.1  
-- **Android Studio**: Flamingo 2024.2  
-- **Java**: Eclipse Adoptium JDK 17.0.13.11  
-- **flutter_dotenv**: 5.2.1  
-
----
-
-## Setup Instructions
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/asadlr/football_hero.git
-cd football_hero
