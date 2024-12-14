@@ -56,5 +56,29 @@ The following fonts are used in the FootballHero app:
   - Style: Covers entire screen with `BoxFit.cover` for responsive scaling.
 
 ---
-This document provides a concise overview of the app's styling and accessibility considerations. Ensure all future updates align with these guidelines.
+
+## New Screens and Features
+
+### **Sign-Up Screen**
+- A form for user registration that collects email, password, and password confirmation.
+- Includes validation for:
+  - Valid email format.
+  - Passwords matching and meeting minimum requirements (at least 6 characters).
+- Includes a checkbox to accept the terms of use with a link to: `https://hoodhero.app/footballhero/he/terms`.
+- On successful sign-up, navigates to the **Success Screen** displaying the unique User ID provided by Supabase.
+
+### **Supabase Integration**
+- Supabase is integrated using the `supabase_flutter` package.
+- Environment variables for the Supabase URL and Anon Key are stored securely in the `.env` file.
+- Example `.env` file:
+  ```env
+  SUPABASE_URL=https://your-supabase-url.supabase.co
+  SUPABASE_ANON_KEY=your-supabase-anon-key
+  ```
+- The `.env` file is loaded using the `flutter_dotenv` package, ensuring secure access to environment variables.
+- The `SignUpScreen` uses the Supabase Auth API to create new users and handle errors.
+
+---
+
+This document provides a comprehensive guide to the current app's styling, screens, and backend integration.
 

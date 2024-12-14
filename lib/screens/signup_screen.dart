@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:football_hero/screens/success_screen.dart';
+import 'package:football_hero/screens/onboarding_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -18,50 +18,46 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _acceptTerms = false;
 
   Future<void> _validateAndSubmit() async {
-  if (_formKey.currentState!.validate()) {
-    if (_acceptTerms) {
-      final email = _emailController.text.trim();
-      final password = _passwordController.text.trim();
+    if (_formKey.currentState!.validate()) {
+      if (_acceptTerms) {
+        final email = _emailController.text.trim();
+        final password = _passwordController.text.trim();
 
-      try {
-        // Supabase signup call
-        final response = await Supabase.instance.client.auth.signUp(
-          email: email,
-          password: password,
-        );
+        try {
+          // Supabase signup call
+          final response = await Supabase.instance.client.auth.signUp(
+            email: email,
+            password: password,
+          );
 
-        if (response.user != null) {
-          // Signup successful
+          if (response.user != null) {
+            // Navigate to the onboarding screen after successful registration
+            if (!mounted) return;
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => OnboardingScreen(userId: response.user!.id),
+              ),
+            );
+          }
+        } on AuthException catch (e) {
           if (!mounted) return;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => SuccessScreen(userId: response.user!.id),
-            ),
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('שגיאה בהרשמה: ${e.message}')),
+          );
+        } catch (e) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('שגיאה בלתי צפויה התרחשה: $e')),
           );
         }
-      } on AuthException catch (e) {
-        // Handle Supabase Auth-specific exceptions
-        if (!mounted) return;
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('שגיאה בהרשמה: ${e.message}')),
-        );
-      } catch (e) {
-        // Handle other errors
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('שגיאה בלתי צפויה התרחשה: $e')),
+          const SnackBar(content: Text('נא להסכים לתנאי השימוש')),
         );
       }
-    } else {
-      // Terms not accepted
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('נא להסכים לתנאי השימוש')),
-      );
     }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {

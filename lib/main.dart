@@ -1,36 +1,38 @@
+// main.dart
+
 import 'package:flutter/material.dart';
 import 'package:football_hero/screens/signup_screen.dart';
+import 'package:football_hero/screens/login_screen.dart';
+import 'package:football_hero/screens/forgot_password_screen.dart';
+import 'package:football_hero/screens/onboarding_screen.dart';
 import 'package:football_hero/screens/welcome_screen.dart';
-import 'package:football_hero/screens/success_screen.dart'; // Import SuccessScreen from its correct file
+import 'package:football_hero/screens/success_screen.dart';
+import 'package:football_hero/screens/onboarding/player_onboarding_screen_1.dart';
+import 'package:football_hero/screens/onboarding/parent_onboarding_screen_1.dart';
+import 'package:football_hero/screens/onboarding/mentor_onboarding_screen_1.dart';
+import 'package:football_hero/screens/onboarding/community_onboarding_screen_1.dart';
+import 'package:football_hero/screens/onboarding/coach_onboarding_screen_1.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   try {
-    debugPrint('Step 1: Loading environment variables...');
     await dotenv.load(fileName: "assets/.env");
 
-    debugPrint('Step 2: Validating environment variables...');
     final supabaseUrl = dotenv.env['SUPABASE_URL'];
     final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
     if (supabaseUrl == null || supabaseAnonKey == null) {
       throw Exception('Missing SUPABASE_URL or SUPABASE_ANON_KEY in .env file');
     }
-    debugPrint('Environment variables loaded successfully.');
 
-    debugPrint('Step 3: Initializing Supabase...');
     await Supabase.initialize(
       url: supabaseUrl,
       anonKey: supabaseAnonKey,
     );
-    debugPrint('Supabase initialized successfully.');
 
-    debugPrint('Step 4: Running the application...');
     runApp(const MyApp());
   } catch (e) {
-    debugPrint('Error during initialization: $e');
     runApp(MaterialApp(
       home: Scaffold(
         body: Center(
@@ -50,29 +52,22 @@ class MyApp extends StatelessWidget {
       title: 'Football Hero',
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        fontFamily: 'VarelaRound', // Main font
+        fontFamily: 'VarelaRound',
       ),
-      initialRoute: '/',
+      initialRoute: '/onboarding',
       routes: {
         '/': (context) => const WelcomeScreen(),
         '/signup': (context) => const SignUpScreen(),
-        '/login': (context) => const PlaceholderScreen(title: 'Login'),
-        '/success': (context) => SuccessScreen(userId: ''), // Correct import
+        '/login': (context) => const LoginScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/success': (context) => const SuccessScreen(userId: ''),
+        '/onboarding': (context) => const OnboardingScreen(userId: ''),
+        '/onboarding/player': (context) => const PlayerOnboardingScreen(),
+        '/onboarding/parent': (context) => const ParentOnboardingScreen(),
+        '/onboarding/mentor': (context) => const MentorOnboardingScreen(),
+        '/onboarding/community': (context) => const CommunityOnboardingScreen(),
+        '/onboarding/coach': (context) => const CoachOnboardingScreen(),
       },
-    );
-  }
-}
-
-class PlaceholderScreen extends StatelessWidget {
-  final String title;
-
-  const PlaceholderScreen({required this.title, super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text('$title Screen Placeholder')),
     );
   }
 }
