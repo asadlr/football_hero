@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
+class Welcome extends StatelessWidget {
+  const Welcome({super.key});
 
   void _navigateToSignup(BuildContext context) {
     Navigator.pushNamed(context, '/signup');
@@ -15,7 +15,7 @@ class WelcomeScreen extends StatelessWidget {
   Future<void> _launchURL() async {
     final url = Uri.parse('https://hoodhero.app/footballhero/he');
     if (await canLaunchUrl(url)) {
-      await launchUrl(url);
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
       throw 'Could not launch $url';
     }
@@ -24,7 +24,7 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Directionality(
-      textDirection: TextDirection.rtl, // Force RTL layout
+      textDirection: TextDirection.rtl, // RTL layout for Hebrew
       child: Scaffold(
         body: Stack(
           children: [
@@ -35,7 +35,7 @@ class WelcomeScreen extends StatelessWidget {
                 fit: BoxFit.cover,
               ),
             ),
-            // Buttons and Footer Info
+            // Content Section
             Align(
               alignment: Alignment.center,
               child: Column(
@@ -43,8 +43,24 @@ class WelcomeScreen extends StatelessWidget {
                 children: [
                   const Spacer(), // Push content downward
 
-                  // signUp Button
+                  // Headline Text
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20.0),
+                    child: Text(
+                      'ברוכים הבאים!', // "Welcome!" in Hebrew
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 40,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white,
+                        fontFamily: 'RubikDirt',
+                      ),
+                    ),
+                  ),
+
+                  // Sign Up Button
                   Container(
+                    margin: const EdgeInsets.symmetric(vertical: 15.0),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Colors.blue.shade300, Colors.blue.shade700],
@@ -56,7 +72,7 @@ class WelcomeScreen extends StatelessWidget {
                         BoxShadow(
                           color: Colors.blue.shade900.withOpacity(0.5),
                           blurRadius: 10.0,
-                          offset: Offset(3, 4),
+                          offset: const Offset(3, 4),
                         ),
                       ],
                     ),
@@ -74,33 +90,27 @@ class WelcomeScreen extends StatelessWidget {
                         shadowColor: Colors.transparent,
                         elevation: 0,
                       ),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: const Text(
-                          'הצטרפו לקבוצה!', // Hebrew for "Join The Team!"
-                          key: ValueKey('JoinButtonText'),
-                          style: TextStyle(
-                            fontSize: 28, // Enlarged by 10%
-                            fontWeight: FontWeight.w300, // Lighter font weight
-                            fontStyle: FontStyle.italic, // Italic style
-                            color: Colors.white,
-                            fontFamily: 'RubikDirt',
-                          ),
+                      child: const Text(
+                        'הצטרפו לקבוצה!', // Hebrew for "Join The Team!"
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w300,
+                          color: Colors.white,
+                          fontFamily: 'RubikDirt',
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 30.0),
-
-                  // logIn Button
+                  // Log In Button
                   Container(
+                    margin: const EdgeInsets.symmetric(vertical: 15.0),
                     decoration: BoxDecoration(
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.25),
                           blurRadius: 10.0,
-                          offset: Offset(3, 4),
+                          offset: const Offset(3, 4),
                         ),
                       ],
                     ),
@@ -111,48 +121,44 @@ class WelcomeScreen extends StatelessWidget {
                           horizontal: 70.0,
                           vertical: 15.0,
                         ),
-                        backgroundColor: Colors.white,
-                        side: BorderSide(color: Colors.transparent),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30.0),
                         ),
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.transparent),
                       ),
-                      child: AnimatedSwitcher(
-                        duration: const Duration(milliseconds: 200),
-                        child: const Text(
-                          'כניסת משתמשים', // Hebrew for "Log In"
-                          key: ValueKey('LoginButtonText'),
-                          style: TextStyle(
-                            fontSize: 28, // Same size as signUp button
-                            fontWeight: FontWeight.w300, // Lighter font weight
-                            fontStyle: FontStyle.italic, // Italic style
-                            color: Colors.black,
-                            fontFamily: 'RubikDirt',
-                          ),
+                      child: const Text(
+                        'כניסת משתמשים', // Hebrew for "Log In"
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w300,
+                          color: Colors.black,
+                          fontFamily: 'RubikDirt',
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 30.0), // Adjusted spacing
-
-                  // HoodHero Info Link
+                  // Info Link
                   GestureDetector(
                     onTap: _launchURL,
-                    child: const Text(
-                      'לחצו כאן למידע נוסף על FootballHero\nותכנית HoodHero', // Hebrew translation
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16, // Same size as buttons
-                        fontWeight: FontWeight.w300, // Lighter font weight
-                        fontStyle: FontStyle.italic, // Italic style
-                        color: Colors.white,
-                        decoration: TextDecoration.underline,
-                        fontFamily: 'VarelaRound',
+                    child: const Padding(
+                      padding: EdgeInsets.only(top: 20.0),
+                      child: Text(
+                        'לחצו כאן למידע נוסף על FootballHero\nותכנית HoodHero', // Hebrew
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w300,
+                          color: Colors.white,
+                          decoration: TextDecoration.underline,
+                          fontFamily: 'VarelaRound',
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 30.0),
+
+                  const SizedBox(height: 30.0), // Bottom Spacing
                 ],
               ),
             ),

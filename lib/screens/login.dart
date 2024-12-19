@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:football_hero/screens/success_screen.dart';
-import 'package:football_hero/screens/forgot_password_screen.dart';
+import 'forgot_password.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class Login extends StatefulWidget {
+  const Login({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<Login> createState() => _LoginState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginState extends State<Login> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -34,12 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.user != null) {
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SuccessScreen(userId: response.user!.id),
-          ),
-        );
+        Navigator.pushReplacementNamed(context, '/success', arguments: response.user!.id);
       }
     } on AuthException catch (e) {
       if (!mounted) return;
@@ -61,12 +55,14 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Scaffold(
         body: Stack(
           children: [
+            // Background image
             Positioned.fill(
               child: Image.asset(
                 'assets/images/mainBackground.webp',
                 fit: BoxFit.cover,
               ),
             ),
+            // Logo
             Positioned(
               top: 0,
               left: 0,
@@ -91,11 +87,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.center, // Aligns text to the right
+                          crossAxisAlignment: CrossAxisAlignment.stretch, // Aligns content properly
                           children: [
                             const Text(
                               'כניסה למערכת',
-                              textAlign: TextAlign.center, // Text aligned to the right
+                              textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 28,
                                 fontWeight: FontWeight.w300,
@@ -105,17 +101,17 @@ class _LoginScreenState extends State<LoginScreen> {
                             const SizedBox(height: 20.0),
                             TextField(
                               controller: _emailController,
-                              textAlign: TextAlign.right, // Aligns input text to the right
+                              textAlign: TextAlign.right,
                               decoration: const InputDecoration(
                                 labelText: 'דוא"ל',
-                                alignLabelWithHint: true, // Ensures label aligns correctly for RTL
+                                alignLabelWithHint: true,
                                 border: OutlineInputBorder(),
                               ),
                             ),
                             const SizedBox(height: 20.0),
                             TextField(
                               controller: _passwordController,
-                              textAlign: TextAlign.right, // Aligns input text to the right
+                              textAlign: TextAlign.right,
                               obscureText: true,
                               decoration: const InputDecoration(
                                 labelText: 'סיסמה',
@@ -142,6 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   fontSize: 18,
                                   fontWeight: FontWeight.w300,
                                   color: Colors.white,
+                                  fontFamily: 'RubikDirt',
                                 ),
                               ),
                             ),
@@ -150,12 +147,12 @@ class _LoginScreenState extends State<LoginScreen> {
                               onTap: () => Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const ForgotPasswordScreen(),
+                                  builder: (context) => const ForgotPassword(),
                                 ),
                               ),
                               child: const Text(
                                 'שכחת סיסמה?',
-                                textAlign: TextAlign.center, // Text aligned to the center  
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
                                   decoration: TextDecoration.underline,
                                   fontFamily: 'VarelaRound',
