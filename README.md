@@ -1,4 +1,3 @@
-
 # FootballHero App Documentation
 
 ## Project Overview
@@ -20,25 +19,47 @@ FootballHero is a video-sharing platform designed to help users manage their foo
 
 ---
 
-### Styling
+### Logging Configuration
+- **Environment-Based Logging**:
+  - Configurable logging based on the environment (`development` or `production`).
+  - Logging settings are controlled through environment variables.
 
-#### Fonts
+#### Environment Variables
+- Example `.env`:
+  ```env
+  SUPABASE_URL=https://your-supabase-url.supabase.co
+  SUPABASE_ANON_KEY=your-supabase-anon-key
+  ENV=development
+  LOG_INFO=true
+  LOG_WARNING=true
+  LOG_ERROR=true
+
+#### Recommended Production Settings
+- For Production Environment:
+  ENV=production
+  LOG_INFO=false
+  LOG_WARNING=true
+  LOG_ERROR=true
+
+## Styling
+
+### Fonts
 - **RubikDirt**: Used for titles, headers, and buttons.
-  - **Style**: Italic, lightweight (w300).
-  - **Size**: 28px.
+  - Style: Italic, lightweight (`w300`).
+  - Size: 28px.
 - **VarelaRound**: Used for body text and links.
-  - **Style**: Lightweight (w300).
-  - **Size**: 16px.
+  - Style: Lightweight (`w300`).
+  - Size: 16px.
 
-#### Theme Preferences
+### Theme Preferences
 - **Background Images**:
   - Welcome screen: `welcomeBackground.webp`.
   - All other screens: `mainBackground.webp`.
 - **Color Palette**:
-  - Buttons:
-    - **Gradient**: `Colors.blue.shade300` to `Colors.blue.shade700`.
+  - **Buttons**:
+    - Gradient: `Colors.blue.shade300` to `Colors.blue.shade700`.
     - Shadows for depth: Blue for primary buttons and black for secondary buttons.
-  - Text:
+  - **Text**:
     - White for primary buttons and links.
     - Black for secondary buttons.
 
@@ -50,7 +71,7 @@ FootballHero is a video-sharing platform designed to help users manage their foo
 - Includes:
   - A "Join the Team" button (`/signup`).
   - A "Log In" button (`/login`).
-  - A footer with a link to **HoodHero** program information.
+  - A footer with a link to HoodHero program information.
 
 ### 2. Login Screen
 - Features:
@@ -85,16 +106,15 @@ FootballHero is a video-sharing platform designed to help users manage their foo
 ## Backend Integration
 
 ### Supabase
-- **URL** and **Anon Key** are securely stored in the `.env` file.
-- Features implemented:
-  - User authentication.
-  - Role-based navigation.
-  - Storing user metadata (e.g., age, address).
+- **URL and Anon Key** are securely stored in the `.env` file.
 
-### Environment Variables
-- Example `.env`:
-  ```env
-  SUPABASE_URL=https://your-supabase-url.supabase.co
-  SUPABASE_ANON_KEY=your-supabase-anon-key
-  ```
+#### Features Implemented
+- User authentication.
+- Role-based navigation.
+- Storing user metadata (e.g., age, address).
+
+#### Example .env File
+- SUPABASE_URL=https://your-supabase-url.supabase.co
+- SUPABASE_ANON_KEY=your-supabase-anon-key
+
 
