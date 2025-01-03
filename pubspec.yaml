@@ -14,10 +14,14 @@ dependencies:
     sdk: flutter
   url_launcher: ^6.1.7 
   path_provider: ^2.0.13
-  supabase_flutter: ^2.8.1
+  supabase_flutter: ^2.8.2
   flutter_dotenv: ^5.2.1
   cupertino_icons: ^1.0.8
   image_picker: ^1.1.2
+  logger: ^2.5.0
+  sentry_flutter: ^8.11.2
+  gotrue: ^2.11.1
+
 
 dev_dependencies:
   flutter_test:

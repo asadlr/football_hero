@@ -1,84 +1,100 @@
-# FootballHero Styling Documentation
 
-## Fonts
-The following fonts are used in the FootballHero app:
+# FootballHero App Documentation
 
-### Main Fonts
-- **RubikDirt**: Used for buttons (e.g., "Join the Team" and "Log In").
-  - **Size**: 28px
-  - **Style**: Italic, lighter weight (w300)
-  - **Color**: White for the "Join the Team" button and black for the "Log In" button.
-
-- **VarelaRound**: Used for informational text and links (e.g., HoodHero Info Link).
-  - **Size**: 16px
-  - **Style**: Italic, lighter weight (w300)
-  - **Color**: White with underline for emphasis.
-
-## Theme Preferences
-
-### Colors
-- **Primary Gradient for Buttons**:
-  - Start: `Colors.blue.shade300`
-  - End: `Colors.blue.shade700`
-
-- **Text Colors**:
-  - Button Text:
-    - White for "Join the Team"
-    - Black for "Log In"
-  - Link Text: White
-
-### Shadows
-- **Sign-Up Button**:
-  - **Color**: `Colors.blue.shade900` (with 50% opacity)
-  - **Blur Radius**: 10px
-  - **Offset**: (3, 4)
-
-- **Log-In Button**:
-  - **Color**: Black (with 25% opacity)
-  - **Blur Radius**: 10px
-  - **Offset**: (3, 4)
-
-### Accessibility
-- **Font Size**: Buttons and links use large, readable sizes (28px and 16px, respectively).
-- **Contrast**: Ensures sufficient contrast between text and background for readability.
-- **ARIA-like Labels**:
-  - Buttons include `ValueKey` identifiers for screen readers.
-- **Spacing**:
-  - Consistent padding and spacing (e.g., `30px` between elements) for easy navigation.
-
-### Animations
-- **AnimatedSwitcher**: Applied to button text for a smooth transition effect when buttons are interacted with.
-  - **Duration**: 200ms
-
-## Assets
-- **Background Image**:
-  - File: `assets/images/welcomeBackground.webp`
-  - Style: Covers entire screen with `BoxFit.cover` for responsive scaling.
+## Project Overview
+FootballHero is a video-sharing platform designed to help users manage their football journey. The app supports seamless user registration, login, and onboarding processes, along with a modern and accessible UI in both Hebrew and English.
 
 ---
 
-## New Screens and Features
+## Features and Updates
 
-### **Sign-Up Screen**
-- A form for user registration that collects email, password, and password confirmation.
-- Includes validation for:
-  - Valid email format.
-  - Passwords matching and meeting minimum requirements (at least 6 characters).
-- Includes a checkbox to accept the terms of use with a link to: `https://hoodhero.app/footballhero/he/terms`.
-- On successful sign-up, navigates to the **Success Screen** displaying the unique User ID provided by Supabase.
+### General Features
+- **Localization**:
+  - Fully supports **Hebrew (RTL)** and **English (LTR)** layouts.
+  - Text direction and font preferences adapt to the chosen language.
+- **Dynamic Role-Based Navigation**:
+  - Users can register as a `player`, `parent`, `coach`, `mentor`, or `community` member.
+  - Onboarding flows adapt dynamically based on the user's selected role.
+- **Supabase Integration**:
+  - User authentication (signup, login, password reset) is implemented with Supabase.
 
-### **Supabase Integration**
-- Supabase is integrated using the `supabase_flutter` package.
-- Environment variables for the Supabase URL and Anon Key are stored securely in the `.env` file.
-- Example `.env` file:
+---
+
+### Styling
+
+#### Fonts
+- **RubikDirt**: Used for titles, headers, and buttons.
+  - **Style**: Italic, lightweight (w300).
+  - **Size**: 28px.
+- **VarelaRound**: Used for body text and links.
+  - **Style**: Lightweight (w300).
+  - **Size**: 16px.
+
+#### Theme Preferences
+- **Background Images**:
+  - Welcome screen: `welcomeBackground.webp`.
+  - All other screens: `mainBackground.webp`.
+- **Color Palette**:
+  - Buttons:
+    - **Gradient**: `Colors.blue.shade300` to `Colors.blue.shade700`.
+    - Shadows for depth: Blue for primary buttons and black for secondary buttons.
+  - Text:
+    - White for primary buttons and links.
+    - Black for secondary buttons.
+
+---
+
+## Screens
+
+### 1. Welcome Screen
+- Includes:
+  - A "Join the Team" button (`/signup`).
+  - A "Log In" button (`/login`).
+  - A footer with a link to **HoodHero** program information.
+
+### 2. Login Screen
+- Features:
+  - Form for user login (email and password).
+  - "Forgot Password?" link redirects to `/forgot-password`.
+  - Validation for empty fields and login errors.
+
+### 3. Forgot Password Screen
+- Functionality:
+  - Sends a password reset email through Supabase Auth API.
+  - Displays appropriate feedback to the user.
+
+### 4. Signup Screen
+- Allows users to register with:
+  - Email.
+  - Password.
+  - Confirmation of terms of service.
+- Supabase handles user creation and validation.
+- Redirects to `/onboarding` upon successful signup.
+
+### 5. Onboarding Screen
+- Captures additional user details:
+  - Name.
+  - Date of Birth (using a localized date picker).
+  - Address and city.
+  - Role (e.g., player, coach).
+- Saves data to Supabase and calculates user age.
+- Dynamic role-based navigation to specific onboarding flows based on the selected role.
+
+---
+
+## Backend Integration
+
+### Supabase
+- **URL** and **Anon Key** are securely stored in the `.env` file.
+- Features implemented:
+  - User authentication.
+  - Role-based navigation.
+  - Storing user metadata (e.g., age, address).
+
+### Environment Variables
+- Example `.env`:
   ```env
   SUPABASE_URL=https://your-supabase-url.supabase.co
   SUPABASE_ANON_KEY=your-supabase-anon-key
   ```
-- The `.env` file is loaded using the `flutter_dotenv` package, ensuring secure access to environment variables.
-- The `SignUpScreen` uses the Supabase Auth API to create new users and handle errors.
-
----
-
-This document provides a comprehensive guide to the current app's styling, screens, and backend integration.
 

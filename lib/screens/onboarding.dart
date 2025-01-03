@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../logger/logger.dart';
 
 class Onboarding extends StatefulWidget {
   final String userId;
@@ -11,6 +12,35 @@ class Onboarding extends StatefulWidget {
 }
 
 class _OnboardingState extends State<Onboarding> {
+  String? userId;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Retrieve the arguments from the ModalRoute
+    final args = ModalRoute.of(context)!.settings.arguments as String;
+    setState(() {
+      userId = args;
+    });
+    AppLogger.info('Onboarding initialized with userId: $userId');
+
+    // Validate userId on initialization
+    if (userId == null || userId!.isEmpty) {
+      AppLogger.warning('User ID is missing during onboarding');
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('שגיאה במזהה המשתמש. נא לנסות שוב')),
+        );
+        Navigator.pop(context); // Navigate back to the previous screen
+      });
+    }
+  }
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
@@ -27,7 +57,11 @@ class _OnboardingState extends State<Onboarding> {
       final city = _cityController.text.trim();
       final role = _selectedRole;
 
+      AppLogger.info('Submitting onboarding form');
+      AppLogger.info('User Info: Name: $name, DOB: $dob, Role: $role');
+
       if (dob == null) {
+        AppLogger.warning('DOB not selected');
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('אנא בחר תאריך לידה')),
         );
@@ -37,8 +71,9 @@ class _OnboardingState extends State<Onboarding> {
       final age = DateTime.now().year - dob.year;
 
       try {
+        AppLogger.info('Saving user data to Supabase');
         await Supabase.instance.client.from('users').upsert({
-          'id': widget.userId,
+          'id': userId,
           'name': name,
           'dob': dob.toIso8601String(),
           'age': age,
@@ -50,38 +85,72 @@ class _OnboardingState extends State<Onboarding> {
 
         if (!mounted) return;
 
-        switch (role) {
-          case 'player':
-            Navigator.pushReplacementNamed(context, '/onboarding/player');
-            break;
-          case 'parent':
-            Navigator.pushReplacementNamed(context, '/onboarding/parent');
-            break;
-          case 'coach':
-            Navigator.pushReplacementNamed(context, '/onboarding/coach');
-            break;
-          case 'community':
-            Navigator.pushReplacementNamed(context, '/onboarding/community');
-            break;
-          case 'mentor':
-            Navigator.pushReplacementNamed(context, '/onboarding/mentor');
-            break;
-          default:
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('סוג משתמש לא ידוע')),
-            );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('שגיאה: $e')),
-          );
-        }
+        AppLogger.info('Navigating based on role: $role');
+        _navigateBasedOnRole(role);
+      } catch (e, stackTrace) {
+        AppLogger.error('Error saving user data', error: e, stackTrace: stackTrace);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('שגיאה: $e')),
+        );
       }
     }
   }
 
+  void _navigateBasedOnRole(String? role) {
+    if (role == null) {
+      AppLogger.warning('No role selected');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('סוג משתמש לא נבחר')),
+      );
+      return;
+    }
+
+    switch (role) {
+      case 'player':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/player',
+          arguments: {'userId': userId, 'role': role},
+        );
+        break;
+      case 'parent':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/parent',
+          arguments: {'userId': userId, 'role': role},
+        );
+        break;
+      case 'coach':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/coach',
+          arguments: {'userId': userId, 'role': role},
+        );
+        break;
+      case 'community':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/community',
+          arguments: {'userId': userId, 'role': role},
+        );
+        break;
+      case 'mentor':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/mentor',
+          arguments: {'userId': userId, 'role': role},
+        );
+        break;
+      default:
+        AppLogger.warning('Unknown role selected');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('סוג משתמש לא ידוע')),
+        );
+    }
+  }
+
   Future<void> _pickDate() async {
+    AppLogger.info('Opening date picker');
     final pickedDate = await showDatePicker(
       context: context,
       locale: const Locale('he'),
@@ -98,11 +167,23 @@ class _OnboardingState extends State<Onboarding> {
         _dobController.text =
             "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
       });
+      AppLogger.info('Date selected: $pickedDate');
+    } else {
+      AppLogger.warning('Date picker canceled');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (userId == null || userId!.isEmpty) {
+      // Handle the case where userId is missing
+      return Scaffold(
+        body: Center(
+          child: Text('שגיאה: מזהה משתמש חסר.'),
+        ),
+      );
+    }
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -119,7 +200,7 @@ class _OnboardingState extends State<Onboarding> {
               child: SingleChildScrollView(
                 child: Card(
                   margin: const EdgeInsets.symmetric(horizontal: 20.0),
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withAlpha(230),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15.0),
                   ),
@@ -236,7 +317,8 @@ class _OnboardingState extends State<Onboarding> {
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w300,
-                                fontFamily: 'RubikDirt',
+                                fontStyle: FontStyle.italic,
+                                fontFamily: 'VarelaRound',
                                 color: Colors.white,
                               ),
                             ),
