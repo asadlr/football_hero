@@ -13,6 +13,7 @@ class _SignupState extends State<Signup> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  String? userId;
   bool _isTermsAccepted = false;
 
   Future<void> _signup() async {
@@ -57,6 +58,7 @@ class _SignupState extends State<Signup> {
         password: password,
       );
 
+
       // Validate user creation
       if (response.user == null || response.user!.id.isEmpty) {
         AppLogger.error('Signup failed: User ID is invalid or missing');
@@ -66,17 +68,17 @@ class _SignupState extends State<Signup> {
         );
         return;
       }
-
+      userId = response.user!.id;
       // Log and navigate
       AppLogger.info('Signup successful: User ID: ${response.user!.id}');
+      
       if (!mounted) return;
 
-      Navigator.pushReplacementNamed(
+      await Navigator.pushReplacementNamed(
         context,
         '/onboarding',
-        arguments: response.user!.id,
+        arguments: {'userId': userId},
       );
-
     } on AuthException catch (e) {
       AppLogger.error('AuthException during signup', error: e.message);
       if (!mounted) return;

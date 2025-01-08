@@ -5,41 +5,18 @@ import '../logger/logger.dart';
 class Onboarding extends StatefulWidget {
   final String userId;
 
-  const Onboarding({required this.userId, super.key});
+  const Onboarding({
+    super.key,
+    required this.userId,
+  });
 
   @override
   State<Onboarding> createState() => _OnboardingState();
 }
 
 class _OnboardingState extends State<Onboarding> {
-  String? userId;
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Retrieve the arguments from the ModalRoute
-    final args = ModalRoute.of(context)!.settings.arguments as String;
-    setState(() {
-      userId = args;
-    });
-    AppLogger.info('Onboarding initialized with userId: $userId');
-
-    // Validate userId on initialization
-    if (userId == null || userId!.isEmpty) {
-      AppLogger.warning('User ID is missing during onboarding');
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('שגיאה במזהה המשתמש. נא לנסות שוב')),
-        );
-        Navigator.pop(context); // Navigate back to the previous screen
-      });
-    }
-  }
+  // Add this line to your state variables at the top
+  late String userId;
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
@@ -48,6 +25,13 @@ class _OnboardingState extends State<Onboarding> {
   final TextEditingController _cityController = TextEditingController();
   String? _selectedRole;
   DateTime? _selectedDate;
+
+ @override
+  void initState() {
+    super.initState();
+    userId = widget.userId;  // Initialize from widget property
+    debugPrint('Onboarding initialized with userId: $userId');
+  }
 
   Future<void> _submitAndNavigate() async {
     if (_formKey.currentState!.validate()) {
@@ -84,11 +68,11 @@ class _OnboardingState extends State<Onboarding> {
         });
 
         if (!mounted) return;
-
         AppLogger.info('Navigating based on role: $role');
         _navigateBasedOnRole(role);
       } catch (e, stackTrace) {
         AppLogger.error('Error saving user data', error: e, stackTrace: stackTrace);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('שגיאה: $e')),
         );
@@ -113,34 +97,7 @@ class _OnboardingState extends State<Onboarding> {
           arguments: {'userId': userId, 'role': role},
         );
         break;
-      case 'parent':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/parent',
-          arguments: {'userId': userId, 'role': role},
-        );
-        break;
-      case 'coach':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/coach',
-          arguments: {'userId': userId, 'role': role},
-        );
-        break;
-      case 'community':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/community',
-          arguments: {'userId': userId, 'role': role},
-        );
-        break;
-      case 'mentor':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/mentor',
-          arguments: {'userId': userId, 'role': role},
-        );
-        break;
+
       default:
         AppLogger.warning('Unknown role selected');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -175,15 +132,6 @@ class _OnboardingState extends State<Onboarding> {
 
   @override
   Widget build(BuildContext context) {
-    if (userId == null || userId!.isEmpty) {
-      // Handle the case where userId is missing
-      return Scaffold(
-        body: Center(
-          child: Text('שגיאה: מזהה משתמש חסר.'),
-        ),
-      );
-    }
-
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(

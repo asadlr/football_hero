@@ -45,3 +45,19 @@ Thumbs.db
 
 # Ignore PSD folder
 assets/images/psd/
+
+# Android specific
+android/app/debug.apk
+android/app/profile.apk
+android/app/release.apk
+
+# iOS specific
+ios/Pods/
+ios/*.mode1v3
+ios/*.mode2v3
+ios/*.moved-aside
+ios/*.pbxuser
+ios/Flutter/.last_build_id
+
+# macOS specific
+macos/Flutter/ephemeral/

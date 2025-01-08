@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class ParentOnboarding1 extends StatelessWidget {
-  const ParentOnboarding1({super.key});
+class MentorOnboarding extends StatelessWidget {
+  const MentorOnboarding({super.key});
 
   @override
   Widget build(BuildContext context) {
