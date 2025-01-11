@@ -80,7 +80,7 @@ class _LoginState extends State<Login> {
                     const SizedBox(height: 150.0),
                     Card(
                       margin: const EdgeInsets.symmetric(horizontal: 20.0),
-                      color: Colors.white.withOpacity(0.8),
+                      color: const Color.fromRGBO(255, 255, 255, 0.9), // Adjusted for precision
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15.0),
                       ),

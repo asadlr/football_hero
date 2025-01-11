@@ -112,7 +112,7 @@ class _SignupState extends State<Signup> {
               child: SingleChildScrollView(
                 child: Card(
                   margin: const EdgeInsets.symmetric(horizontal: 20.0),
-                  color: Colors.white.withOpacity(0.9),
+                  color: const Color.fromRGBO(255, 255, 255, 0.9), // Adjusted for precision
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15.0),
                   ),

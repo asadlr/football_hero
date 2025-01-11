@@ -86,7 +86,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                 margin: const EdgeInsets.all(18.0),
                 padding: const EdgeInsets.all(18.0),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
+                  color: const Color.fromRGBO(255, 255, 255, 0.9), // Adjusted for precision
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: SingleChildScrollView(
@@ -279,7 +279,6 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                   if (formKey.currentState?.validate() ?? false) {
                     final String teamName = newTeamNameController.text.trim();
                     final String addressText = newTeamAddressController.text.trim();
-                    // Only pass the address if it's not empty
                     final String? teamAddress = addressText.isNotEmpty ? addressText : null;
                     
                     await _saveNewTeam(teamName, teamAddress);

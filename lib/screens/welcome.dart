@@ -70,7 +70,7 @@ class Welcome extends StatelessWidget {
                       borderRadius: BorderRadius.circular(30.0),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.blue.shade900.withOpacity(0.5),
+                          color: const Color.fromARGB(186, 10, 133, 204), // Adjusted for precision
                           blurRadius: 10.0,
                           offset: const Offset(3, 4),
                         ),
@@ -108,7 +108,7 @@ class Welcome extends StatelessWidget {
                     decoration: BoxDecoration(
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.25),
+                          color: const Color.fromARGB(230, 0, 0, 0), // Adjusted for precision
                           blurRadius: 10.0,
                           offset: const Offset(3, 4),
                         ),
