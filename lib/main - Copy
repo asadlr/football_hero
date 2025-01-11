@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/signup.dart';
-import 'screens/home.dart';
 import 'screens/login.dart';
 import 'screens/forgot_password.dart';
 import 'screens/onboarding.dart';
@@ -205,33 +204,10 @@ class MyApp extends StatelessWidget {
                   ),
                 );
               }
+
               return MaterialPageRoute(
-                builder: (context) => PlayerOnboarding(userId: userId),                
+                builder: (context) => PlayerOnboarding(userId: userId),
                 settings: settings,
-              );
-              
-              case '/onboarding/favorites':
-                final Map<String, dynamic>? args = settings.arguments as Map<String, dynamic>?;
-                final userId = args?['userId'] as String?;
-
-                if (userId == null) {
-                  return MaterialPageRoute(
-                    builder: (context) => const ErrorApp(
-                      error: 'Invalid user ID provided',
-                    ),
-                  );
-                }
-
-                return MaterialPageRoute(
-                  builder: (context) => FavoritesScreen(userId: userId), // Use FavoritesScreen
-                  settings: settings,
-                );
-
-            default:
-              return MaterialPageRoute(
-                builder: (context) => const ErrorApp(
-                  error: 'Unknown route',
-                ),
               );
             }
           },
