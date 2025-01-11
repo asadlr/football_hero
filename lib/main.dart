@@ -194,23 +194,23 @@ class MyApp extends StatelessWidget {
             case '/forgot-password':
               return MaterialPageRoute(builder: (context) => const ForgotPassword());
             case '/onboarding/player':
+              final Map<String, dynamic>? args = settings.arguments as Map<String, dynamic>?;
+              final userId = args?['userId'] as String?;
+              
+              if (userId == null) {
+                return MaterialPageRoute(
+                  builder: (context) => const ErrorApp(
+                    error: 'Invalid user ID provided',
+                  ),
+                );
+              }
+
               return MaterialPageRoute(
-                builder: (context) => const PlayerOnboarding(),
+                builder: (context) => PlayerOnboarding(userId: userId),
                 settings: settings,
               );
-            case '/onboarding/favorites':
-              return MaterialPageRoute(
-                builder: (context) => const Favorites(),
-                settings: settings,
-              );
-            default:
-              return MaterialPageRoute(
-                builder: (context) => const ErrorApp(
-                  error: 'Route not found',
-                ),
-              );
-          }
-        },
-    );
+            }
+          },
+        );
+      }
   }
-}
