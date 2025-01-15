@@ -209,6 +209,21 @@ class MyApp extends StatelessWidget {
                 builder: (context) => PlayerOnboarding(userId: userId),                
                 settings: settings,
               );
+            case '/onboarding/coach':
+              final Map<String, dynamic>? args = settings.arguments as Map<String, dynamic>?;
+              final userId = args?['userId'] as String?;
+              
+              if (userId == null) {
+                return MaterialPageRoute(
+                  builder: (context) => const ErrorApp(
+                    error: 'Invalid user ID provided',
+                  ),
+                );
+              }
+              return MaterialPageRoute(
+                builder: (context) => CoachOnboarding(userId: userId),                
+                settings: settings,
+              );
               
               case '/onboarding/favorites':
                 final Map<String, dynamic>? args = settings.arguments as Map<String, dynamic>?;

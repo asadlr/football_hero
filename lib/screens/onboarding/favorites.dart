@@ -19,38 +19,40 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
   List<String> searchResults3 = [];
 
   Future<void> _saveFavorites() async {
-    try {
-      for (String clubName in favoriteClubs) {
-        // First get the club_id for the club name
-        final clubResponse = await Supabase.instance.client
-            .from('football_clubs')
-            .select('id')
-            .eq('name', clubName)
-            .single();
-        
-        // Then insert using the club_id
-        await Supabase.instance.client
-            .from('user_favourite_clubs')  // Removed 'public.' prefix
-            .insert({
-              'user_id': widget.userId,
-              'club_id': clubResponse['id'],
-            });
-      }
+  try {
+    // Remove any duplicates from favoriteClubs
+    final uniqueClubs = favoriteClubs.toSet().toList();
+    
+    for (String clubName in uniqueClubs) {
+      // First get the club_id for the club name
+      final clubResponse = await Supabase.instance.client
+          .from('football_clubs')
+          .select('id')
+          .eq('name', clubName)
+          .single();
       
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => HomeScreen(userId: widget.userId),
-        ),
-      );
-    } catch (e) {
-      AppLogger.error('Error saving favorite clubs', error: e);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('שגיאה בשמירת קבוצות אהובות: $e')),
-      );
+      // Then insert using the club_id
+      await Supabase.instance.client
+          .from('favorite_clubs')  // Corrected table name
+          .insert({
+            'user_id': widget.userId,
+            'club_id': clubResponse['id'],
+          });
     }
-  }  
-  
+    
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(userId: widget.userId),
+      ),
+    );
+  } catch (e) {
+    AppLogger.error('Error saving favorite clubs', error: e);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('שגיאה בשמירת קבוצות אהובות: $e')),
+    );
+  }
+}
   Future<void> _searchClubs(String query, int searchFieldIndex) async {
   try {
     final response = await Supabase.instance.client

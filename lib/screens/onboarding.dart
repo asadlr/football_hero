@@ -96,6 +96,12 @@ class _OnboardingState extends State<Onboarding> {
           '/onboarding/player',
           arguments: {'userId': userId, 'role': role},
         );
+      case 'coach':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/coach',
+          arguments: {'userId': userId, 'role': role},
+        );
         break;
 
       default:
