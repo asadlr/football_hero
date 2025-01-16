@@ -80,38 +80,58 @@ class _OnboardingState extends State<Onboarding> {
     }
   }
 
+ // In onboarding.dart, update the _navigateBasedOnRole method:
+
   void _navigateBasedOnRole(String? role) {
-    if (role == null) {
-      AppLogger.warning('No role selected');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('סוג משתמש לא נבחר')),
-      );
-      return;
-    }
-
-    switch (role) {
-      case 'player':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/player',
-          arguments: {'userId': userId, 'role': role},
-        );
-      case 'coach':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/coach',
-          arguments: {'userId': userId, 'role': role},
-        );
-        break;
-
-      default:
-        AppLogger.warning('Unknown role selected');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('סוג משתמש לא ידוע')),
-        );
-    }
+  if (role == null) {
+    AppLogger.warning('No role selected');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('סוג משתמש לא נבחר')),
+    );
+    return;
   }
 
+  final args = {'userId': userId, 'role': role};
+  
+  switch (role) {
+    case 'player':
+      Navigator.pushReplacementNamed(
+        context,
+        '/onboarding/player',
+        arguments: args,
+      );
+    case 'parent':
+      Navigator.pushReplacementNamed(
+        context,
+        '/onboarding/parent',
+        arguments: args,
+      );
+    case 'coach':
+      Navigator.pushReplacementNamed(
+        context,
+        '/onboarding/coach',
+        arguments: args,
+      );
+    case 'mentor':
+      Navigator.pushReplacementNamed(
+        context,
+        '/onboarding/mentor',
+        arguments: args,
+      );
+    case 'community':
+      Navigator.pushReplacementNamed(
+        context,
+        '/onboarding/community',
+        arguments: args,
+      );
+    default:
+      AppLogger.warning('Unknown role selected');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('סוג משתמש לא ידוע')),
+      );
+  }
+}
+  
   Future<void> _pickDate() async {
     AppLogger.info('Opening date picker');
     final pickedDate = await showDatePicker(
