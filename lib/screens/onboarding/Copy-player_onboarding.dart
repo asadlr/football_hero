@@ -147,6 +147,11 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: const Text('שחקן - שלב ההרשמה'),
+        ),
         extendBodyBehindAppBar: true,
         body: Stack(
           children: [
@@ -165,48 +170,32 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // AppBar content
-                      const Text(
-                        'שחקן - שלב ההרשמה',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const SizedBox(height: 18),
+                        _buildTeamNameField(),
+                        const SizedBox(height: 18),
+                        _buildPositionSelection(),
+                        const SizedBox(height: 10),
+                        _buildHeightWeightFields(),
+                        const SizedBox(height: 10),
+                        _buildLegSelection(),
+                        const SizedBox(height: 10),
+                        _buildSkillsSliders(),
+                        const SizedBox(height: 18),
+                        ElevatedButton(
+                          onPressed: _submitAndNavigate,
+                          child: const Text(
+                            'המשך',
+                            style: TextStyle(fontSize: 16.2),
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12), // Reduced from 24 to 12
-                      // Form content
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildTeamNameField(),
-                            const SizedBox(height: 2),
-                            _buildPositionSelection(),
-                            const SizedBox(height: 10),
-                            _buildHeightWeightFields(),
-                            const SizedBox(height: 10),
-                            _buildLegSelection(),
-                            const SizedBox(height: 10),
-                            _buildSkillsSliders(),
-                            const SizedBox(height: 10),
-                            ElevatedButton(
-                              onPressed: _submitAndNavigate,
-                              child: const Text(
-                                'המשך',
-                                style: TextStyle(fontSize: 15),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -216,124 +205,113 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
       ),
     );
   }
-  
-  Widget _buildTeamNameField() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'הקבוצה שלך: (אופציונלי)',
-        style: TextStyle(fontSize: 15),
-      ),
-      const SizedBox(height: 10),
-      Row(
-        children: [
-          Expanded(
-            child: Autocomplete<String>(
-              optionsBuilder: (TextEditingValue textEditingValue) async {
-                if (textEditingValue.text.isEmpty) {
-                  return const Iterable<String>.empty();
-                }
 
-                try {
-                  final response = await Supabase.instance.client
-                      .from('teams')
-                      .select('name')
-                      .ilike('name', '%${textEditingValue.text}%')
-                      .limit(10);
+Widget _buildTeamNameField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'קבוצה (אופציונלי):',
+          style: TextStyle(fontSize: 16.2),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) async {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<String>.empty();
+                  }
 
-                  final List<dynamic> data = response as List<dynamic>;
-                  return data.map<String>((team) => team['name'] as String);
-                } catch (error) {
-                  debugPrint('Error fetching teams: $error');
-                  return const Iterable<String>.empty();
-                }
-              },
-              displayStringForOption: (String option) => option,
-              onSelected: (String selection) {
-                setState(() {
-                  _teamNameController.text = selection;
-                  _isTeamValid = true;
-                });
-              },
-              fieldViewBuilder: (
-                BuildContext context,
-                TextEditingController fieldController,
-                FocusNode fieldFocusNode,
-                VoidCallback onFieldSubmitted,
-              ) {
-               return TextFormField(
-                controller: fieldController,
-                focusNode: fieldFocusNode,
-                decoration: const InputDecoration(
-                  labelText: 'שם הקבוצה',
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: alternateThemeColor,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  isDense: true,
-                ),
-                  onChanged: (value) {
-                    if (value.isNotEmpty) {
-                      setState(() {
-                        _isTeamValid = false;
-                      });
-                    }
-                  },
-                  validator: (value) {
-                    if (value?.isNotEmpty == true && !_isTeamValid) {
-                      return 'יש לבחור קבוצה מהרשימה';
-                    }
-                    return null;
-                  },
-                );
-              },
-              optionsViewBuilder: (
-                BuildContext context,
-                AutocompleteOnSelected<String> onSelected,
-                Iterable<String> options,
-              ) {
-                return Align(
-                  alignment: Alignment.topRight,
-                  child: Material(
-                    elevation: 4.0,
-                    child: SizedBox(
-                      height: 200,
-                      width: MediaQuery.of(context).size.width - 74,
-                      child: ListView.builder(
-                        padding: EdgeInsets.zero,
-                        itemCount: options.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final option = options.elementAt(index);
-                          return ListTile(
-                            title: Text(option),
-                            onTap: () {
-                              onSelected(option);
-                            },
-                          );
-                        },
+                  try {
+                    final response = await Supabase.instance.client
+                        .from('teams')
+                        .select('name')
+                        .ilike('name', '%${textEditingValue.text}%')
+                        .limit(10);
+
+                    final List<dynamic> data = response as List<dynamic>;
+                    return data.map<String>((team) => team['name'] as String);
+                  } catch (error) {
+                    debugPrint('Error fetching teams: $error');
+                    return const Iterable<String>.empty();
+                  }
+                },
+                displayStringForOption: (String option) => option,
+                onSelected: (String selection) {
+                  setState(() {
+                    _teamNameController.text = selection;
+                    _isTeamValid = true;
+                  });
+                },
+                fieldViewBuilder: (
+                  BuildContext context,
+                  TextEditingController fieldController,
+                  FocusNode fieldFocusNode,
+                  VoidCallback onFieldSubmitted,
+                ) {
+                  return TextFormField(
+                    controller: fieldController,
+                    focusNode: fieldFocusNode,
+                    decoration: const InputDecoration(
+                      labelText: 'הזן את שם הקבוצה',
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: alternateThemeColor,
+                    ),
+                    onChanged: (value) {
+                      if (value.isNotEmpty) {
+                        setState(() {
+                          _isTeamValid = false;
+                        });
+                      }
+                    },
+                    validator: (value) {
+                      if (value?.isNotEmpty == true && !_isTeamValid) {
+                        return 'יש לבחור קבוצה מהרשימה';
+                      }
+                      return null;
+                    },
+                  );
+                },
+                optionsViewBuilder: (
+                  BuildContext context,
+                  AutocompleteOnSelected<String> onSelected,
+                  Iterable<String> options,
+                ) {
+                  return Align(
+                    alignment: Alignment.topRight,
+                    child: Material(
+                      elevation: 4.0,
+                      child: SizedBox(
+                        height: 200,
+                        width: MediaQuery.of(context).size.width - 74,
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option),
+                              onTap: () {
+                                onSelected(option);
+                              },
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 8), // Add some spacing
-      const Text(
-        'השאר/י  ריק במידה ואין לך קבוצה או שהקבוצה לא נמצאת',
-        style: TextStyle(
-          fontSize: 11,
-          color: Colors.black,
-          fontStyle: FontStyle.italic,
+          ],
         ),
-      ),
-    ],
-  );
-}
-  
+      ],
+    );
+  }
+
   Widget _buildPositionSelection() {
     const positions = [
       {'label': 'שער', 'value': 'goalkeeper'},
@@ -347,7 +325,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
       children: [
         const Text(
           'תפקיד:',
-          style: TextStyle(fontSize: 15),
+          style: TextStyle(fontSize: 16.2),
         ),
         const SizedBox(height: 10),
         Center(
@@ -381,7 +359,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
   Widget _buildHeightWeightFields() {
     return Row(
       children: [
-        const Text('גובה: ', style: TextStyle(fontSize: 15)),
+        const Text('גובה: ', style: TextStyle(fontSize: 16.2)),
         Expanded(
           child: _buildTextFormField(
             controller: _heightController,
@@ -390,7 +368,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
           ),
         ),
         const SizedBox(width: 10),
-        const Text('משקל: ', style: TextStyle(fontSize: 15)),
+        const Text('משקל: ', style: TextStyle(fontSize: 16.2)),
         Expanded(
           child: _buildTextFormField(
             controller: _weightController,
@@ -407,7 +385,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
       children: [
         const Text(
           'רגל חזקה:',
-          style: TextStyle(fontSize: 15),
+          style: TextStyle(fontSize: 16.2),
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -426,8 +404,6 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
               border: OutlineInputBorder(),
               filled: true,
               fillColor: alternateThemeColor,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              isDense: true,
             ),
             validator: (value) => value == null ? 'נא לבחור רגל חזקה' : null,
           ),
@@ -447,40 +423,17 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
     ];
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: skills.map((skill) => _buildSlider(
-        skill['label'] as String,
-        skill['value'] as double,
-        (value) => setState(() => (skill['setter'] as Function(double))(value)),
-      )).toList(),
-    );
-  }
-
-  Widget _buildSlider(String label, double value, ValueChanged<double> onChanged) {
-    return Column(
-      mainAxisSize: MainAxisSize.min, // Makes the column as compact as possible
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(top: 4), // Small padding above label
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 15),
-          ),
-        ),
-        SizedBox(
-          height: 30, // Reduced height for the slider
-          child: Slider(
-            value: value,
-            min: 0,
-            max: 10,
-            divisions: 10,
-            label: value.round().toString(),
-            onChanged: onChanged,
-          ),
-        ),
-      ],
+      children: skills.map((skill) {
+        return _buildSlider(
+          skill['label'] as String,
+          skill['value'] as double,
+          (value) {
+            setState(() {
+              (skill['setter'] as Function(double))(value);
+            });
+          },
+        );
+      }).toList(),
     );
   }
 
@@ -496,12 +449,29 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
         border: const OutlineInputBorder(),
         filled: true,
         fillColor: alternateThemeColor,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        isDense: true,
       ),
       validator: (value) =>
           value == null || value.isEmpty ? validatorMessage : null,
     );
   }
 
+  Widget _buildSlider(String label, double value, ValueChanged<double> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(fontSize: 16.2),
+        ),
+        Slider(
+          value: value,
+          min: 0,
+          max: 10,
+          divisions: 10,
+          label: value.round().toString(),
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
 }
