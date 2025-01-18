@@ -17,10 +17,12 @@ dependencies:
   supabase_flutter: ^2.0.0
   flutter_dotenv: ^5.2.1
   cupertino_icons: ^1.0.8
-  file_picker: ^5.5.0
   logger: ^2.5.0
   sentry_flutter: ^8.11.2
   gotrue: ^2.11.1
+  file_picker: ^6.1.1  # For selecting files
+  image_picker: ^1.0.7  # For image picking functionality
+
 
 
 dev_dependencies:

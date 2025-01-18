@@ -14,6 +14,7 @@ import 'screens/onboarding/community_onboarding.dart';
 import 'screens/onboarding/mentor_onboarding.dart';
 import 'screens/onboarding/favorites.dart';
 import 'screens/welcome.dart';
+import 'state/onboarding_state.dart';
 
 Future<void> main() async {
   // Ensure proper widget initialization
@@ -125,8 +126,38 @@ class ErrorApp extends StatelessWidget {
   }
 }
 
+// ... [Keep all imports and initialization code the same until MyApp class]
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
+  // Helper method to create error route
+  MaterialPageRoute<dynamic> _errorRoute(String message) {
+    return MaterialPageRoute(
+      builder: (context) => ErrorApp(error: message),
+    );
+  }
+
+  // Helper method to validate and extract onboarding arguments
+  Map<String, dynamic>? _validateOnboardingArgs(
+    RouteSettings settings,
+    String screenName,
+  ) {
+    final args = settings.arguments as Map<String, dynamic>?;
+    
+    if (args == null) {
+      debugPrint('Missing arguments for $screenName');
+      return null;
+    }
+
+    final userId = args['userId'] as String?;
+    if (userId == null) {
+      debugPrint('Invalid user ID for $screenName');
+      return null;
+    }
+
+    return args;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -156,146 +187,91 @@ class MyApp extends StatelessWidget {
       onGenerateRoute: (settings) {
         debugPrint('Generating route for: ${settings.name}');
         
-        // Handle onboarding route
-        if (settings.name == '/onboarding') {
-          final Map<String, dynamic>? args;
-          if (settings.arguments is Map<String, dynamic>) {
-            args = settings.arguments as Map<String, dynamic>;
-          } else {
-            debugPrint('Invalid arguments type for onboarding route');
-            return MaterialPageRoute(
-              builder: (context) => const ErrorApp(
-                error: 'Invalid arguments provided',
-              ),
-            );
-          }
-
-          final userId = args?['userId'] as String?;
-          if (userId == null) {
-            return MaterialPageRoute(
-              builder: (context) => const ErrorApp(
-                error: 'Invalid user ID provided',
-              ),
-            );
-          }
-
-          return MaterialPageRoute(
-            builder: (context) => Onboarding(userId: userId),
-            settings: settings,
-          );
-        }
-
-        // Handle all other routes
+        // Handle basic routes without arguments
         switch (settings.name) {
           case '/':
             return MaterialPageRoute(builder: (context) => const Welcome());
-          
           case '/signup':
             return MaterialPageRoute(builder: (context) => const Signup());
-          
           case '/login':
             return MaterialPageRoute(builder: (context) => const Login());
-          
           case '/forgot-password':
             return MaterialPageRoute(builder: (context) => const ForgotPassword());
-          
-          case '/onboarding/player':
-            final args = settings.arguments as Map<String, dynamic>?;
-            final userId = args?['userId'] as String?;
-            if (userId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const ErrorApp(
-                  error: 'Invalid user ID provided',
-                ),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => PlayerOnboarding(userId: userId),
-              settings: settings,
-            );
-          
-          case '/onboarding/parent':
-            final args = settings.arguments as Map<String, dynamic>?;
-            final userId = args?['userId'] as String?;
-            if (userId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const ErrorApp(
-                  error: 'Invalid user ID provided',
-                ),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => ParentOnboarding(userId: userId),
-              settings: settings,
-            );
-
-          case '/onboarding/coach':
-            final args = settings.arguments as Map<String, dynamic>?;
-            final userId = args?['userId'] as String?;
-            if (userId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const ErrorApp(
-                  error: 'Invalid user ID provided',
-                ),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => CoachOnboarding(userId: userId),
-              settings: settings,
-            );
-
-          case '/onboarding/mentor':
-            final args = settings.arguments as Map<String, dynamic>?;
-            final userId = args?['userId'] as String?;
-            if (userId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const ErrorApp(
-                  error: 'Invalid user ID provided',
-                ),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => MentorOnboarding(userId: userId),
-              settings: settings,
-            );
-
-          case '/onboarding/community':
-            final args = settings.arguments as Map<String, dynamic>?;
-            final userId = args?['userId'] as String?;
-            if (userId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const ErrorApp(
-                  error: 'Invalid user ID provided',
-                ),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => CommunityOnboarding(userId: userId),
-              settings: settings,
-            );
-            
-          case '/onboarding/favorites':
-            final args = settings.arguments as Map<String, dynamic>?;
-            final userId = args?['userId'] as String?;
-            if (userId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const ErrorApp(
-                  error: 'Invalid user ID provided',
-                ),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => FavoritesScreen(userId: userId),
-              settings: settings,
-            );
-
-          default:
-            return MaterialPageRoute(
-              builder: (context) => const ErrorApp(
-                error: 'Unknown route',
-              ),
-            );
+          case '/welcome':
+            return MaterialPageRoute(builder: (context) => const Welcome(), settings: settings);
         }
+
+        // Handle onboarding routes
+        if (settings.name?.startsWith('/onboarding') == true) {
+          // Handle all onboarding routes (including favorites)
+          final args = _validateOnboardingArgs(settings, settings.name ?? '');
+          if (args == null) return _errorRoute('Invalid arguments for ${settings.name}');
+
+          final userId = args['userId'] as String;
+          final onboardingState = args['onboardingState'] as OnboardingState?;
+          final defaultState = const OnboardingState.empty();
+
+          switch (settings.name) {
+            case '/onboarding':
+              return MaterialPageRoute(
+                builder: (context) => Onboarding(
+                  userId: userId,
+                  onboardingState: onboardingState ?? defaultState,
+                ),
+              );
+              
+            case '/onboarding/player':
+              return MaterialPageRoute(
+                builder: (context) => PlayerOnboarding(
+                  userId: userId,
+                  onboardingState: onboardingState ?? defaultState,
+                ),
+              );
+              
+            case '/onboarding/parent':
+              return MaterialPageRoute(
+                builder: (context) => ParentOnboarding(
+                  userId: userId,
+                  onboardingState: onboardingState ?? defaultState,
+                ),
+              );
+              
+            case '/onboarding/coach':
+              return MaterialPageRoute(
+                builder: (context) => CoachOnboarding(
+                  userId: userId,
+                  onboardingState: onboardingState ?? defaultState,
+                ),
+              );
+              
+            case '/onboarding/mentor':
+              return MaterialPageRoute(
+                builder: (context) => MentorOnboarding(
+                  userId: userId,
+                  onboardingState: onboardingState ?? defaultState,
+                ),
+              );
+              
+            case '/onboarding/community':
+              return MaterialPageRoute(
+                builder: (context) => CommunityOnboarding(
+                  userId: userId,
+                  onboardingState: onboardingState ?? defaultState,
+                ),
+              );
+
+              case '/onboarding/favorites':
+              return MaterialPageRoute(
+                builder: (context) => FavoritesScreen(
+                  userId: userId,
+                  onboardingState: onboardingState ?? defaultState,
+                ),
+              );
+          }
+        }
+
+        // Handle unknown routes
+        return _errorRoute('Unknown route: ${settings.name}');
       },
     );
   }

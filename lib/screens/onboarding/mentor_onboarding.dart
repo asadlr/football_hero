@@ -2,13 +2,16 @@
 
 import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
+import '../../state/onboarding_state.dart';
 
 class MentorOnboarding extends StatefulWidget {
   final String userId;
+  final OnboardingState onboardingState;
 
   const MentorOnboarding({
     super.key,
     required this.userId,
+    required this.onboardingState,
   });
 
   @override

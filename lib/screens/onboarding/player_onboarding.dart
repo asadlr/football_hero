@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../state/onboarding_state.dart';
+
+const Color alternateThemeColor = Color(0xFFF5F5F5); // Light grey color
 
 class PlayerOnboarding extends StatefulWidget {
   final String userId;
-
-  const PlayerOnboarding({super.key, required this.userId});
+  final OnboardingState onboardingState;
+  const PlayerOnboarding({super.key, required this.userId, required this.onboardingState});
 
   @override
   State<PlayerOnboarding> createState() => _PlayerOnboardingState();
@@ -14,6 +17,7 @@ class PlayerOnboarding extends StatefulWidget {
 
 class _PlayerOnboardingState extends State<PlayerOnboarding> {
   late String _userId;
+  late OnboardingState _onboardingState;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _teamNameController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
@@ -26,38 +30,115 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
   double _passing = 0;
   double _scoring = 0;
   double _goalkeeping = 0;
-  bool _isTeamValid = true; // Add this with other state variables
-  
+  bool _isTeamValid = true;
+  bool _isLoading = false;
+
   @override
   void initState() {
     super.initState();
     _userId = widget.userId;
+    _onboardingState = widget.onboardingState;
+    _initializeFields();
     debugPrint('PlayerOnboarding initialized with userId: $_userId');
   }
 
-  static const Color alternateThemeColor = Color(0xFFE0E3E7);
+  void _initializeFields() {
+    // Pre-fill fields from the onboardingState
+    _teamNameController.text = _onboardingState.teamName ?? '';
+    _heightController.text = _onboardingState.height?.toString() ?? '';
+    _weightController.text = _onboardingState.weight?.toString() ?? '';
+    _selectedPositions.addAll(_onboardingState.positions ?? []);
+    _selectedLeg = _onboardingState.strongLeg;
+    final skills = _onboardingState.skills;
+    if (skills != null) {
+      _speed = skills.speed;
+      _headers = skills.headers;
+      _defending = skills.defending;
+      _passing = skills.passing;
+      _scoring = skills.scoring;
+      _goalkeeping = skills.goalkeeping;
+    }
+  }
 
+  void _handleBack() {
+    // Update the onboardingState with the current form data
+    final updatedState = _onboardingState.copyWith(
+      teamName: _teamNameController.text.trim(),
+      height: int.tryParse(_heightController.text.trim()),
+      weight: int.tryParse(_weightController.text.trim()),
+      positions: _selectedPositions.toList(),
+      strongLeg: _selectedLeg,
+      skills: PlayerSkills(
+        speed: _speed,
+        headers: _headers,
+        defending: _defending,
+        passing: _passing,
+        scoring: _scoring,
+        goalkeeping: _goalkeeping,
+      ),
+    );
+
+    Navigator.pushReplacementNamed(
+      context,
+      '/onboarding',
+      arguments: {
+        'userId': _userId,
+        'onboardingState': updatedState,
+      },
+    );
+  }
+  
+  Future<String?> _getTeamIdByName(String teamName) async {
+    try {
+      final response = await Supabase.instance.client
+        .from('teams')
+        .select('id')
+        .eq('name', teamName)
+        .limit(1)
+        .single();
+
+      return response['id'] as String?;
+    } catch (e) {
+      debugPrint('Error fetching team ID: $e');
+      return null;
+    }
+  }
+  
   Future<void> _submitAndNavigate() async {
     if (_formKey.currentState!.validate()) {
+      setState(() {
+      _isLoading = true;
+       });
       final teamName = _teamNameController.text.trim();
       final height = int.tryParse(_heightController.text.trim());
       final weight = int.tryParse(_weightController.text.trim());
       final positions = _selectedPositions.toList();
       final strongLeg = _selectedLeg;
-      
-      // Create skills object in the correct format for the players.skills JSONB column
-      final skills = {
-        'speed': _speed,
-        'headers': _headers,
-        'defending': _defending,
-        'passing': _passing,
-        'scoring': _scoring,
-        'goalkeeping': _goalkeeping,
-      };
+
+      // Create the PlayerSkills object
+      final skills = PlayerSkills(
+        speed: _speed,
+        headers: _headers,
+        defending: _defending,
+        passing: _passing,
+        scoring: _scoring,
+        goalkeeping: _goalkeeping,
+      );
+
+          // Create updated state BEFORE navigation
+        final updatedState = _onboardingState.copyWith(
+          teamName: teamName,
+          height: height,
+          weight: weight,
+          positions: positions,
+          strongLeg: strongLeg,
+          skills: skills,
+        );
 
       AppLogger.info('Player Onboarding form submitted');
       AppLogger.info(
-          'Team Name: $teamName, Height: $height, Weight: $weight, Positions: $positions, Leg: $strongLeg, Skills: $skills');
+        'Team Name: $teamName, Height: $height, Weight: $weight, Positions: $positions, Leg: $strongLeg, Skills: $skills',
+      );
 
       try {
         String? teamId;
@@ -69,149 +150,142 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
             );
-            return;  // Stop the submission process here
+            return; // Stop the submission process here
           }
         }
 
         if (!mounted) return;
 
-        // Insert into users table if not exists (should be handled by auth)
-        
-        final userExists = await _checkUserExists(_userId);
-        if (!userExists) {
-          await Supabase.instance.client.from('users').insert({
-            'id': _userId,
-            'role': 'player',  // Set default role for player
-          });
-        }
-
         // Insert into players table using user_id as id
         await Supabase.instance.client
-            .from('players')
-            .insert({
-              'id': _userId,
-              'current_team_id': teamId,
-              'height': height,
-              'weight': weight,
-              'positions': positions,
-              'strong_leg': strongLeg,
-              'skills': jsonEncode(skills), // Now this should work after importing 'dart:convert'
-            });
+          .from('players')
+          .insert({
+            'id': _userId,
+            'current_team_id': teamId,
+            'height': height,
+            'weight': weight,
+            'positions': positions,
+            'strong_leg': strongLeg,
+            'skills': jsonEncode(skills.toMap()), // Encode the PlayerSkills object to a Map
+          });
 
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/favorites',
-          arguments: {'userId': _userId},
-        );
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/onboarding/favorites',
+            arguments: {
+              'userId': _userId,
+              'onboardingState': updatedState,
+            },
+          );
+        }
       } catch (e, stackTrace) {
         AppLogger.error('Error during player onboarding', error: e, stackTrace: stackTrace);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('An error occurred: $e')),
         );
+      } finally {
+        if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });     
       }
     }
   }
-
-  Future<bool> _checkUserExists(String userId) async {
-    try {
-      final response = await Supabase.instance.client
-          .from('users')
-          .select('id')
-          .eq('id', userId)
-          .maybeSingle();  // Use maybeSingle() instead of single()
-      return response != null;
-    } catch (e) {
-      return false;
-    }
   }
-
-  Future<String?> _getTeamIdByName(String teamName) async {
-    try {
-      final response = await Supabase.instance.client
-          .from('teams')
-          .select('id')
-          .eq('name', teamName)
-          .limit(1)
-          .single();
-
-      return response['id'] as String?;
-    } catch (e) {
-      debugPrint('Error fetching team ID: $e');
-      return null;
-    }
-  }
-
+  
   @override
   Widget build(BuildContext context) {
-    return Directionality(
+  return PopScope(
+    // Use onPopInvokedWithResult instead of onPopInvoked
+    onPopInvokedWithResult: (didPop, result) {
+      if (!didPop) {
+        _handleBack();
+      }
+    },
+    child: Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        extendBodyBehindAppBar: true,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/mainBackground.webp',
-                fit: BoxFit.cover,
-              ),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: BackButton(
+              color: Colors.black,
+              onPressed: _handleBack,
             ),
-            Center(
-              child: Container(
-                margin: const EdgeInsets.all(18.0),
-                padding: const EdgeInsets.all(18.0),
-                decoration: BoxDecoration(
-                  color: const Color.fromRGBO(255, 255, 255, 0.9),
-                  borderRadius: BorderRadius.circular(15),
+          ),
+          extendBodyBehindAppBar: true,
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/mainBackground.webp',
+                  fit: BoxFit.cover,
                 ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // AppBar content
-                      const Text(
-                        'שחקן - שלב ההרשמה',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+              ),
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.all(18.0),
+                  padding: const EdgeInsets.all(18.0),
+                  decoration: BoxDecoration(
+                    color: const Color.fromRGBO(255, 255, 255, 0.9),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'שחקן - שלב ההרשמה',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12), // Reduced from 24 to 12
-                      // Form content
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildTeamNameField(),
-                            const SizedBox(height: 2),
-                            _buildPositionSelection(),
-                            const SizedBox(height: 10),
-                            _buildHeightWeightFields(),
-                            const SizedBox(height: 10),
-                            _buildLegSelection(),
-                            const SizedBox(height: 10),
-                            _buildSkillsSliders(),
-                            const SizedBox(height: 10),
-                            ElevatedButton(
-                              onPressed: _submitAndNavigate,
-                              child: const Text(
-                                'המשך',
-                                style: TextStyle(fontSize: 15),
+                        const SizedBox(height: 12),
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildTeamNameField(),
+                              const SizedBox(height: 2),
+                              _buildPositionSelection(),
+                              const SizedBox(height: 10),
+                              _buildHeightWeightFields(),
+                              const SizedBox(height: 10),
+                              _buildLegSelection(),
+                              const SizedBox(height: 10),
+                              _buildSkillsSliders(),
+                              const SizedBox(height: 10),
+                              ElevatedButton(
+                                onPressed: _submitAndNavigate,
+                                child: const Text(
+                                  'המשך',
+                                  style: TextStyle(fontSize: 15),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      if (_isLoading)
+                        Container(
+                          color: Colors.black54,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -503,5 +577,5 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
           value == null || value.isEmpty ? validatorMessage : null,
     );
   }
-
+  
 }

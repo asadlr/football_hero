@@ -2,13 +2,16 @@
 
 import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
+import '../../state/onboarding_state.dart';
 
 class CommunityOnboarding extends StatefulWidget {
   final String userId;
+  final OnboardingState onboardingState;
 
   const CommunityOnboarding({
     super.key,
     required this.userId,
+    required this.onboardingState,
   });
 
   @override
