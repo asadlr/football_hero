@@ -25,15 +25,67 @@ class FavoritesScreenState extends State<FavoritesScreen> {
   List<String> searchResults3 = [];
 
   void _handleBack() {
-    // Navigate back to player onboarding screen
-    Navigator.pushReplacementNamed(
-      context,
-      '/onboarding/player',
-      arguments: {
-        'userId': widget.userId,
-        'onboardingState': widget.onboardingState, // Pass the current state back
-      },
-    );
+    // Get the role from onboardingState
+    final role = widget.onboardingState.role;
+
+    // Navigate back based on role
+    switch (role) {
+      case 'player':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/player',
+          arguments: {
+            'userId': widget.userId,
+            'onboardingState': widget.onboardingState,
+          },
+        );
+      case 'parent':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/parent',
+          arguments: {
+            'userId': widget.userId,
+            'onboardingState': widget.onboardingState,
+          },
+        );
+      case 'coach':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/coach',
+          arguments: {
+            'userId': widget.userId,
+            'onboardingState': widget.onboardingState,
+          },
+        );
+      case 'mentor':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/mentor',
+          arguments: {
+            'userId': widget.userId,
+            'onboardingState': widget.onboardingState,
+          },
+        );
+      case 'community':
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/community',
+          arguments: {
+            'userId': widget.userId,
+            'onboardingState': widget.onboardingState,
+          },
+        );
+      default:
+        // If role is not set, go back to main onboarding
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding',
+          arguments: {
+            'userId': widget.userId,
+            'onboardingState': widget.onboardingState,
+          },
+        );
+    }
   }
 
   Future<void> _saveFavorites() async {
