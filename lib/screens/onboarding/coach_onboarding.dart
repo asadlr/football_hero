@@ -16,22 +16,113 @@ class CoachOnboarding extends StatefulWidget {
 
 class _CoachOnboardingState extends State<CoachOnboarding> {
   late String _userId;
+  late OnboardingState _onboardingState;  
+  bool _isLoading = false;
+
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _teamNameController = TextEditingController();
   final TextEditingController _certificateNumberController = TextEditingController();
   bool _isTeamValid = true;
   bool _isProfessionalCoach = false;
   PlatformFile? _selectedFile;
+  String? _savedFileName;
+  String? _savedFileUrl;
+  bool _isInitialized = false;
   
+  static const Color alternateThemeColor = Color(0xFFE0E3E7);
+
   @override
   void initState() {
     super.initState();
     _userId = widget.userId;
+    _onboardingState = widget.onboardingState;
+    _initializeFields();
     debugPrint('CoachOnboarding initialized with userId: $_userId');
+  } 
+
+  void _initializeFields() async {
+    // Pre-fill fields from the onboardingState
+    _isProfessionalCoach = _onboardingState.isProfessionalCoach ?? false;
+    _certificateNumberController.text = _onboardingState.certificateNumber ?? '';
+    
+    // Initialize file information
+    _savedFileName = _onboardingState.certificateFileName;
+    _savedFileUrl = _onboardingState.certificateUrl;
+
+    // If we have saved file info, update the UI
+    if (_savedFileName != null) {
+      setState(() {
+        _selectedFile = PlatformFile(
+          name: _savedFileName!,
+          size: 0,  // Size isn't critical for display
+          bytes: null,  // We don't need the actual bytes for display
+        );
+      });
+    }
+
+    // Handle team name initialization
+    final savedTeamName = _onboardingState.teamName;
+      if (savedTeamName != null && savedTeamName.isNotEmpty) {
+        _teamNameController.text = savedTeamName;
+        // Verify team exists
+        try {
+          final exists = await _verifyTeamExists(savedTeamName);
+          if (mounted) {
+            setState(() {
+              _isTeamValid = exists;
+              _isInitialized = true;
+            });
+          }
+        } catch (e) {
+          debugPrint('Error verifying team: $e');
+          if (mounted) {
+            setState(() {
+              _isTeamValid = false;
+              _isInitialized = true;
+            });
+          }
+        }
+      } else {
+        setState(() {
+          _isInitialized = true;
+        });
+      }
+    }
+
+  Future<bool> _verifyTeamExists(String teamName) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('teams')
+          .select('name')
+          .eq('name', teamName)
+          .maybeSingle();
+      return response != null;
+    } catch (e) {
+      debugPrint('Error verifying team: $e');
+      return false;
+    }
   }
+  
+  void _handleBack() {
+    // Update the onboardingState with all current form data
+    final updatedState = _onboardingState.copyWith(
+      teamName: _teamNameController.text.trim(),
+      isProfessionalCoach: _isProfessionalCoach,
+      certificateNumber: _isProfessionalCoach ? _certificateNumberController.text.trim() : null,
+      certificateFileName: _selectedFile?.name ?? _savedFileName,
+      certificateUrl: _savedFileUrl,
+    );
 
-  static const Color alternateThemeColor = Color(0xFFE0E3E7);
-
+    Navigator.pushReplacementNamed(
+      context,
+      '/onboarding',
+      arguments: {
+        'userId': _userId,
+        'onboardingState': updatedState,
+      },
+    );
+  }
+  
   Future<void> _pickFile() async {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
@@ -51,14 +142,41 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
 
   Future<void> _submitAndNavigate() async {
     if (_formKey.currentState!.validate()) {
-      
-      final teamName = _teamNameController.text.trim();
-      final certificateNumber = _certificateNumberController.text.trim();
-
-      AppLogger.info('Coach Onboarding form submitted');
-      AppLogger.info('Team Name: $teamName');
+      setState(() {
+        _isLoading = true;
+      });
 
       try {
+        final teamName = _teamNameController.text.trim();
+        final certificateNumber = _certificateNumberController.text.trim();
+        String? certificateUrl;
+        String? fileName;
+
+        // Handle file upload if there's a new file
+        // Handle file upload if there's a new file
+        if (_selectedFile?.bytes != null) {
+          // Create a path that includes the user ID as a folder
+          fileName = '${_userId}/${_userId}_certificate.${_selectedFile!.extension}';
+          final fileBytes = _selectedFile!.bytes!;
+
+          await Supabase.instance.client
+              .storage
+              .from('coach_certificate')
+              .uploadBinary(
+                fileName,
+                fileBytes,
+                fileOptions: const FileOptions(
+                  cacheControl: '3600',
+                  upsert: true,
+                ),
+              );
+
+          certificateUrl = Supabase.instance.client
+              .storage
+              .from('coach_certificate')
+              .getPublicUrl(fileName);
+        }
+
         String? teamId;
         // Only get team ID if a team name was provided
         if (teamName.isNotEmpty) {
@@ -83,55 +201,61 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
           });
         }
 
-        String? certificateUrl;
-        if (_selectedFile != null) {
-          // Upload certificate to storage
-          final String fileName = '${_userId}_certificate.${_selectedFile!.extension}';
-          final fileBytes = _selectedFile!.bytes!;
-          
-          final storageResponse = await Supabase.instance.client
-              .storage
-              .from('certificates')
-              .uploadBinary(
-                fileName,
-                fileBytes,
-                fileOptions: const FileOptions(
-                  cacheControl: '3600',
-                  upsert: true,
-                ),
-              );
-              
-          certificateUrl = Supabase.instance.client
-              .storage
-              .from('certificates')
-              .getPublicUrl(fileName);
-        }
-
         // Insert into coaches table using user_id as id
         await Supabase.instance.client
             .from('coaches')
-            .insert({
+            .upsert({
               'id': _userId,
-              'current_team_id': teamId,
               'is_professional': _isProfessionalCoach,
               'certificate_number': _isProfessionalCoach ? certificateNumber : null,
-              'certificate_url': certificateUrl,
+              'certificate_url': certificateUrl ?? _savedFileUrl,
+            },
+            onConflict: 'id'
+          );
+        
+        if (teamId != null) {
+          await Supabase.instance.client
+            .from('team_members')
+            .insert({
+              'user_id': _userId,
+              'team_id': teamId,
+              'role': 'coach',
+              'status': 'active'
             });
+        }
 
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/favorites',
-          arguments: {
-            'userId': _userId,
-            'onboardingState': widget.onboardingState,
-          },
+        // Update state with all information including file data
+        final updatedState = _onboardingState.copyWith(
+          teamName: teamName,
+          isProfessionalCoach: _isProfessionalCoach,
+          certificateNumber: _isProfessionalCoach ? certificateNumber : null,
+          certificateFileName: fileName ?? _savedFileName,
+          certificateUrl: certificateUrl ?? _savedFileUrl,
         );
+
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/onboarding/favorites',
+            arguments: {
+              'userId': _userId,
+              'onboardingState': updatedState,
+            },
+          );
+        }
       } catch (e, stackTrace) {
         AppLogger.error('Error during coach onboarding', error: e, stackTrace: stackTrace);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred: $e')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('An error occurred: $e')),
+          );
+        }
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+        }
       }
     }
   }
@@ -165,74 +289,99 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
     }
   }
 
-  @override
+ @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        extendBodyBehindAppBar: true,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.asset(
-                'assets/images/mainBackground.webp',
-                fit: BoxFit.cover,
-              ),
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleBack();
+        }
+      },
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: BackButton(
+              color: Colors.black,
+              onPressed: () {
+                _handleBack();
+              },
             ),
-            Center(
-              child: Container(
-                margin: const EdgeInsets.all(18.0),
-                padding: const EdgeInsets.all(18.0),
-                decoration: BoxDecoration(
-                  color: const Color.fromRGBO(255, 255, 255, 0.9),
-                  borderRadius: BorderRadius.circular(15),
+          ),
+          extendBodyBehindAppBar: true,
+          body: Stack(
+            children: [
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/mainBackground.webp',
+                  fit: BoxFit.cover,
                 ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Text(
-                        'מאמן - שלב ההרשמה',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+              ),
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.all(18.0),
+                  padding: const EdgeInsets.all(18.0),
+                  decoration: BoxDecoration(
+                    color: const Color.fromRGBO(255, 255, 255, 0.9),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'מאמן - שלב ההרשמה',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 12),
-                      Form(
-                        key: _formKey,
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildTeamNameField(),
-                            const SizedBox(height: 20),
-                            _buildCertificationTypeField(),
-                             const SizedBox(height: 20),
-                            ElevatedButton(
-                              onPressed: _submitAndNavigate,
-                              child: const Text(
-                                'המשך',
-                                style: TextStyle(fontSize: 15),
+                        const SizedBox(height: 12),
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _buildTeamNameField(),
+                              const SizedBox(height: 20),
+                              _buildCertificationTypeField(),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                onPressed: _submitAndNavigate,
+                                child: const Text('המשך'),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                        if (_isLoading)
+                          Container(
+                            color: Colors.black54,
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-  
+
   Widget _buildTeamNameField() {
+    if (!_isInitialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -245,6 +394,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
           children: [
             Expanded(
               child: Autocomplete<String>(
+                initialValue: TextEditingValue(text: _teamNameController.text),
                 optionsBuilder: (TextEditingValue textEditingValue) async {
                   if (textEditingValue.text.isEmpty) {
                     return const Iterable<String>.empty();
@@ -277,6 +427,11 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
                   FocusNode fieldFocusNode,
                   VoidCallback onFieldSubmitted,
                 ) {
+                  // Sync the controllers
+                  if (fieldController.text != _teamNameController.text) {
+                    fieldController.text = _teamNameController.text;
+                  }
+
                   return TextFormField(
                     controller: fieldController,
                     focusNode: fieldFocusNode,
@@ -289,9 +444,14 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
                       isDense: true,
                     ),
                     onChanged: (value) {
+                      _teamNameController.text = value;
                       if (value.isNotEmpty) {
                         setState(() {
                           _isTeamValid = false;
+                        });
+                      } else {
+                        setState(() {
+                          _isTeamValid = true;  // Empty value is valid
                         });
                       }
                     },
@@ -391,7 +551,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
               contentPadding: EdgeInsets.zero,
               dense: true,
             ),
-            if (_isProfessionalCoach) ... [
+            if (_isProfessionalCoach) ...[
               const SizedBox(height: 16),
               TextFormField(
                 controller: _certificateNumberController,
@@ -413,15 +573,29 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
                 style: TextStyle(fontSize: 15),
               ),
               const SizedBox(height: 8),
-              if (_selectedFile != null)
+              if (_selectedFile != null || _savedFileUrl != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    _selectedFile!.name,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.green,
-                    ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _selectedFile?.name ?? _savedFileName ?? '',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.green,
+                          ),
+                        ),
+                      ),
+                      if (_savedFileUrl != null)
+                        TextButton(
+                          onPressed: () {
+                            // You could add functionality to view the saved file
+                            // For now, just show that it exists
+                          },
+                          child: const Text('קובץ קיים'),
+                        ),
+                    ],
                   ),
                 ),
               ElevatedButton.icon(
@@ -438,6 +612,5 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
       ],
     );
   }
-
-
 }
+

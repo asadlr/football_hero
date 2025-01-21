@@ -27,7 +27,12 @@ class FavoritesScreenState extends State<FavoritesScreen> {
   void _handleBack() {
     // Get the role from onboardingState
     final role = widget.onboardingState.role;
-
+    
+    final args = {
+      'userId': widget.userId,
+      'onboardingState': widget.onboardingState,
+    };
+    
     // Navigate back based on role
     switch (role) {
       case 'player':

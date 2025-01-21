@@ -14,7 +14,7 @@ class Onboarding extends StatefulWidget {
   });
 
   @override
-  State<Onboarding> createState() => _OnboardingState();
+  State<Onboarding> createState() => _OnboardingState(); // Change this line
 }
 
 class _OnboardingState extends State<Onboarding> {
@@ -33,10 +33,11 @@ class _OnboardingState extends State<Onboarding> {
     super.initState();
     userId = widget.userId;
     _onboardingState = widget.onboardingState;
+    _selectedRole = widget.onboardingState.role;
     _initializeFields();
     debugPrint('Onboarding initialized with userId: $userId');
   }
-
+  
   void _initializeFields() {
     // Pre-fill fields from state if available
     _nameController.text = _onboardingState.name ?? '';
@@ -48,8 +49,107 @@ class _OnboardingState extends State<Onboarding> {
       _dobController.text = "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}";
     }
   }
+  
+  Future<void> _deleteUserRoleData(String userId, String previousRole) async {
+    try {
+      switch (previousRole) {
+        case 'player':
+          // Delete player-specific data
+          await Supabase.instance.client
+            .from('players')
+            .delete()
+            .eq('id', userId);
+          
+          // Delete player's team memberships
+          await Supabase.instance.client
+            .from('team_members')
+            .delete()
+            .eq('user_id', userId)
+            .eq('role', 'player');
+          break;
+        
+        case 'coach':
+          AppLogger.info('Starting to delete coach data for user: $userId');
+          
+          // Delete coach-specific data
+          await Supabase.instance.client
+            .from('coaches')
+            .delete()
+            .eq('id', userId);
+          
+          // Delete coach's team memberships
+          await Supabase.instance.client
+            .from('team_members')
+            .delete()
+            .eq('user_id', userId)
+            .eq('role', 'coach');
+          
+          // Delete certificate file from storage
+          try {
+            // First check if there are any files in the user's folder
+            final fileList = await Supabase.instance.client
+              .storage
+              .from('coach_certificate')
+              .list(path: userId);
 
+            AppLogger.info('Found ${fileList.length} files in user folder');
 
+            if (fileList.isNotEmpty) {
+              // Delete the entire folder and its contents
+              for (final file in fileList) {
+                final fullPath = '${userId}/${file.name}';
+                AppLogger.info('Attempting to delete file: $fullPath');
+                
+                await Supabase.instance.client
+                  .storage
+                  .from('coach_certificate')
+                  .remove([fullPath]);
+                
+                AppLogger.info('Successfully deleted file: $fullPath');
+              }
+            }
+
+            // Also check for any files directly named with the user ID (without folder)
+            final allFiles = await Supabase.instance.client
+              .storage
+              .from('coach_certificate')
+              .list();
+
+            final userFiles = allFiles.where((file) => 
+              file.name.startsWith('${userId}_')
+            ).toList();
+
+            if (userFiles.isNotEmpty) {
+              for (final file in userFiles) {
+                AppLogger.info('Attempting to delete file: ${file.name}');
+                
+                await Supabase.instance.client
+                  .storage
+                  .from('coach_certificate')
+                  .remove([file.name]);
+                
+                AppLogger.info('Successfully deleted file: ${file.name}');
+              }
+            }
+          } catch (storageError, storageStackTrace) {
+            AppLogger.error(
+              'Error deleting coach certificate files', 
+              error: storageError,
+              stackTrace: storageStackTrace
+            );
+          }
+          break;
+      }
+
+      AppLogger.info('Successfully deleted previous role data for user: $userId, previous role: $previousRole');
+    } catch (e, stackTrace) {
+      AppLogger.error(
+        'Error deleting previous role data', 
+        error: e, 
+        stackTrace: stackTrace
+      );
+    }
+  }
 
 Future<bool> _onWillPop() async {
   if (!mounted) return false; // Check if the State is still mounted
@@ -105,6 +205,7 @@ Future<bool> _onWillPop() async {
       final address = _addressController.text.trim();
       final city = _cityController.text.trim();
       final role = _selectedRole;
+      final previousRole = _onboardingState.role; 
 
       AppLogger.info('Submitting onboarding form');
       AppLogger.info('User Info: Name: $name, DOB: $dob, Role: $role');
@@ -120,6 +221,12 @@ Future<bool> _onWillPop() async {
       final age = DateTime.now().year - dob.year;
 
       try {
+        // If the role has changed from coach to another role, delete the old coach data and the uploaded file
+        if (previousRole != null && role != previousRole) {
+          AppLogger.info('Role changed from $previousRole to $role. Cleaning up old data...');
+          await _deleteUserRoleData(userId, previousRole);
+        }
+
         AppLogger.info('Saving user data to Supabase');
         await Supabase.instance.client.from('users').upsert({
           'id': userId,

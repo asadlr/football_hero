@@ -161,7 +161,6 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
           .from('players')
           .insert({
             'id': _userId,
-            'current_team_id': teamId,
             'height': height,
             'weight': weight,
             'positions': positions,
@@ -169,6 +168,17 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
             'skills': jsonEncode(skills.toMap()), // Encode the PlayerSkills object to a Map
           });
 
+        if (teamId != null) {
+        await Supabase.instance.client
+          .from('team_members')
+          .insert({
+            'user_id': _userId,
+            'team_id': teamId,
+            'role': 'player',
+            'status': 'active'
+          });
+        }
+        
         if (mounted) {
           Navigator.pushReplacementNamed(
             context,

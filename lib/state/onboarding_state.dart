@@ -1,19 +1,9 @@
 class OnboardingState {
-  const OnboardingState.empty()
-      : teamName = null,
-        height = null,
-        weight = null,
-        positions = const [],
-        strongLeg = null,
-        skills = null,
-        email = null,
-        name = null,
-        dateOfBirth = null,
-        role = null,
-        address = null,
-        city = null;
-
   final String? teamName;
+  final bool? isProfessionalCoach;
+  final String? certificateNumber;
+  final String? certificateFileName;  // Add this field
+  final String? certificateUrl;
   final int? height;
   final int? weight;
   final List<String>? positions;
@@ -28,6 +18,10 @@ class OnboardingState {
 
   const OnboardingState({
     this.teamName,
+    this.isProfessionalCoach,
+    this.certificateNumber,
+    this.certificateFileName,  // Add this
+    this.certificateUrl,
     this.height,
     this.weight,
     this.positions,
@@ -41,14 +35,36 @@ class OnboardingState {
     this.city,
   });
 
+  const OnboardingState.empty()
+      : teamName = null,
+        isProfessionalCoach = null,
+        certificateNumber = null,
+        certificateFileName = null,  // Add this
+        certificateUrl = null,
+        height = null,
+        weight = null,
+        positions = const [],
+        strongLeg = null,
+        skills = null,
+        email = null,
+        name = null,
+        dateOfBirth = null,
+        role = null,
+        address = null,
+        city = null;
+
   OnboardingState copyWith({
+    String? teamName,
+    bool? isProfessionalCoach,
+    String? certificateNumber,
+    String? certificateFileName,  // Add this
+    String? certificateUrl,       // Add this
     String? email,
     String? name,
     DateTime? dateOfBirth,
     String? role,
     String? address,
     String? city,
-    String? teamName,
     int? height,
     int? weight,
     List<String>? positions,
@@ -57,6 +73,10 @@ class OnboardingState {
   }) {
     return OnboardingState(
       teamName: teamName ?? this.teamName,
+      isProfessionalCoach: isProfessionalCoach ?? this.isProfessionalCoach,
+      certificateNumber: certificateNumber ?? this.certificateNumber,
+      certificateFileName: certificateFileName ?? this.certificateFileName,
+      certificateUrl: certificateUrl ?? this.certificateUrl,
       height: height ?? this.height,
       weight: weight ?? this.weight,
       positions: positions ?? this.positions,
