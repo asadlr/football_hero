@@ -15,6 +15,8 @@ class OnboardingState {
   final String? role;
   final String? address;
   final String? city;
+  final String? parentId;     // Add this field for parent's ID number
+  final String? playerUserId;
 
   const OnboardingState({
     this.teamName,
@@ -33,6 +35,8 @@ class OnboardingState {
     this.role,
     this.address,
     this.city,
+    this.parentId,
+    this.playerUserId,
   });
 
   const OnboardingState.empty()
@@ -51,7 +55,9 @@ class OnboardingState {
         dateOfBirth = null,
         role = null,
         address = null,
-        city = null;
+        city = null,
+        parentId = null,
+        playerUserId = null;
 
   OnboardingState copyWith({
     String? teamName,
@@ -70,6 +76,8 @@ class OnboardingState {
     List<String>? positions,
     String? strongLeg,
     PlayerSkills? skills,
+    String? parentId,
+    String? playerUserId,
   }) {
     return OnboardingState(
       teamName: teamName ?? this.teamName,
@@ -88,6 +96,8 @@ class OnboardingState {
       role: role ?? this.role,
       address: address ?? this.address,
       city: city ?? this.city,
+      parentId: parentId ?? this.parentId,
+      playerUserId: playerUserId ?? this.playerUserId,
     );
   }
 }
