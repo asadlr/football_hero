@@ -23,12 +23,11 @@ dependencies:
   file_picker: ^6.1.1  # For selecting files
   image_picker: ^1.0.7  # For image picking functionality
 
-
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -39,9 +38,17 @@ flutter:
     - assets/images/mainBackground.webp
 
   fonts:
-    - family: RubikDirt # Secondery font for Buttons or Containers Text
+    - family: RubikDirt # Secondary font for Buttons or Containers Text
       fonts:
         - asset: assets/fonts/RubikDirt-Regular.ttf
     - family: VarelaRound # Main Font
       fonts:
         - asset: assets/fonts/VarelaRound-Regular.ttf
+
+# Moved flutter_launcher_icons to root level
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/android/playstore.png"
+  adaptive_icon_background: "#4CAF50"  # Green background color from logo
+  adaptive_icon_foreground: "assets/icon/android/mdpi.png"

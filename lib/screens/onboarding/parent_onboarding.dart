@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../state/onboarding_state.dart';
-import 'dart:html' show window;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ParentOnboarding extends StatefulWidget {
   final String userId;
