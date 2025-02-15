@@ -15,10 +15,15 @@ class OnboardingState {
   final String? role;
   final String? address;
   final String? city;
+  final String? phoneNumber; // Add this line
   final String? parentId;     // Add this field for parent's ID number
   final String? playerUserId;
+  final String? idNumber;
+  final String? communityName;
 
   const OnboardingState({
+    this.idNumber,
+    this.communityName,
     this.teamName,
     this.isProfessionalCoach,
     this.certificateNumber,
@@ -35,6 +40,7 @@ class OnboardingState {
     this.role,
     this.address,
     this.city,
+    this.phoneNumber, // Add this line
     this.parentId,
     this.playerUserId,
   });
@@ -56,10 +62,15 @@ class OnboardingState {
         role = null,
         address = null,
         city = null,
+        phoneNumber = null,
         parentId = null,
-        playerUserId = null;
+        playerUserId = null,
+        idNumber = null,
+        communityName = null;
 
   OnboardingState copyWith({
+    String? idNumber,
+    String? communityName,
     String? teamName,
     bool? isProfessionalCoach,
     String? certificateNumber,
@@ -71,6 +82,7 @@ class OnboardingState {
     String? role,
     String? address,
     String? city,
+    String? phoneNumber, // Add this line
     int? height,
     int? weight,
     List<String>? positions,
@@ -96,8 +108,11 @@ class OnboardingState {
       role: role ?? this.role,
       address: address ?? this.address,
       city: city ?? this.city,
+      phoneNumber: phoneNumber ?? this.phoneNumber, // Add this line
       parentId: parentId ?? this.parentId,
       playerUserId: playerUserId ?? this.playerUserId,
+      idNumber: idNumber ?? this.idNumber,
+      communityName: communityName ?? this.communityName,
     );
   }
 }

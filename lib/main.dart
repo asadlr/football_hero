@@ -254,7 +254,7 @@ class MyApp extends StatelessWidget {
               
             case '/onboarding/community':
               return MaterialPageRoute(
-                builder: (context) => CommunityOnboarding(
+                builder: (context) => CommunityManagerOnboarding(
                   userId: userId,
                   onboardingState: onboardingState ?? defaultState,
                 ),
