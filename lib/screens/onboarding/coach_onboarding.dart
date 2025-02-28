@@ -141,124 +141,123 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
   }
 
   Future<void> _submitAndNavigate() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+  if (_formKey.currentState!.validate()) {
+    setState(() {
+      _isLoading = true;
+    });
 
-      try {
-        final teamName = _teamNameController.text.trim();
-        final certificateNumber = _certificateNumberController.text.trim();
-        String? certificateUrl;
-        String? fileName;
+    try {
+      final teamName = _teamNameController.text.trim();
+      final certificateNumber = _certificateNumberController.text.trim();
+      String? certificateUrl;
+      String? fileName;
 
-        // Handle file upload if there's a new file
-        // Handle file upload if there's a new file
-        if (_selectedFile?.bytes != null) {
-          // Create a path that includes the user ID as a folder
-          fileName = '${_userId}/${_userId}_certificate.${_selectedFile!.extension}';
-          final fileBytes = _selectedFile!.bytes!;
+      // Handle file upload if there's a new file
+      if (_selectedFile?.bytes != null) {
+        // Create a path that includes the user ID as a folder
+        fileName = '${_userId}/${_userId}_certificate.${_selectedFile!.extension}';
+        final fileBytes = _selectedFile!.bytes!;
 
-          await Supabase.instance.client
-              .storage
-              .from('coach_certificate')
-              .uploadBinary(
-                fileName,
-                fileBytes,
-                fileOptions: const FileOptions(
-                  cacheControl: '3600',
-                  upsert: true,
-                ),
-              );
-
-          certificateUrl = Supabase.instance.client
-              .storage
-              .from('coach_certificate')
-              .getPublicUrl(fileName);
-        }
-
-        String? teamId;
-        // Only get team ID if a team name was provided
-        if (teamName.isNotEmpty) {
-          teamId = await _getTeamIdByName(teamName);
-          if (teamId == null) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
-            );
-            return;
-          }
-        }
-
-        if (!mounted) return;
-
-        // Insert into users table if not exists
-        final userExists = await _checkUserExists(_userId);
-        if (!userExists) {
-          await Supabase.instance.client.from('users').insert({
-            'id': _userId,
-            'role': 'coach',
-          });
-        }
-
-        // Insert into coaches table using user_id as id
         await Supabase.instance.client
-            .from('coaches')
-            .upsert({
-              'id': _userId,
-              'is_professional': _isProfessionalCoach,
-              'certificate_number': _isProfessionalCoach ? certificateNumber : null,
-              'certificate_url': certificateUrl ?? _savedFileUrl,
-            },
-            onConflict: 'id'
+            .storage
+            .from('coach_certificate')
+            .uploadBinary(
+              fileName,
+              fileBytes,
+              fileOptions: const FileOptions(
+                cacheControl: '3600',
+                upsert: true,
+              ),
+            );
+
+        certificateUrl = Supabase.instance.client
+            .storage
+            .from('coach_certificate')
+            .getPublicUrl(fileName);
+      }
+
+      String? teamId;
+      // Only get team ID if a team name was provided
+      if (teamName.isNotEmpty) {
+        teamId = await _getTeamIdByName(teamName);
+        if (teamId == null) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
           );
-        
-        if (teamId != null) {
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+      }
+
+      if (!mounted) return;
+
+      // Update coach-specific fields directly in the users table
+      await Supabase.instance.client
+          .from('users')
+          .update({
+            'is_professional': _isProfessionalCoach,
+            'certificate_number': _isProfessionalCoach ? certificateNumber : null,
+            'certificate_url': certificateUrl ?? _savedFileUrl,
+          })
+          .eq('id', _userId);
+      
+      // Handle team association if a team was selected
+      if (teamId != null) {
+        try {
           await Supabase.instance.client
             .from('team_members')
             .insert({
               'user_id': _userId,
               'team_id': teamId,
               'role': 'coach',
-              'status': 'active'
+              'status': 'pending',
+              'created_at': DateTime.now().toIso8601String(),
+              'created_by': _userId
             });
+        } catch (teamError) {
+          AppLogger.error('Error associating coach with team', error: teamError);
+          // Don't rethrow since this isn't critical to proceed
         }
+      }
 
-        // Update state with all information including file data
-        final updatedState = _onboardingState.copyWith(
-          teamName: teamName,
-          isProfessionalCoach: _isProfessionalCoach,
-          certificateNumber: _isProfessionalCoach ? certificateNumber : null,
-          certificateFileName: fileName ?? _savedFileName,
-          certificateUrl: certificateUrl ?? _savedFileUrl,
+      // Update state with all information including file data
+      final updatedState = _onboardingState.copyWith(
+        teamName: teamName,
+        isProfessionalCoach: _isProfessionalCoach,
+        certificateNumber: _isProfessionalCoach ? certificateNumber : null,
+        certificateFileName: fileName ?? _savedFileName,
+        certificateUrl: certificateUrl ?? _savedFileUrl,
+      );
+
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/favorites',
+          arguments: {
+            'userId': _userId,
+            'onboardingState': updatedState,
+          },
         );
-
-        if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/onboarding/favorites',
-            arguments: {
-              'userId': _userId,
-              'onboardingState': updatedState,
-            },
-          );
-        }
-      } catch (e, stackTrace) {
-        AppLogger.error('Error during coach onboarding', error: e, stackTrace: stackTrace);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('An error occurred: $e')),
-          );
-        }
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
-        }
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error('Error during coach onboarding', error: e, stackTrace: stackTrace);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('An error occurred: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
+}
 
   Future<bool> _checkUserExists(String userId) async {
     try {
@@ -528,9 +527,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
                 onChanged: (bool? value) {
                   setState(() {
                     _isProfessionalCoach = false;
-                    // Clear certificate fields when switching to non-professional
-                    _certificateNumberController.clear();
-                    _selectedFile = null;
+                    // But keeping certificate fields when switching to non-professional
                   });
                 },
               ),

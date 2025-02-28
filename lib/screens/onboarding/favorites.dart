@@ -100,21 +100,37 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       // Remove any duplicates from favoriteClubs
       final uniqueClubs = favoriteClubs.toSet().toList();
 
-      for (String clubName in uniqueClubs) {
-        // First get the club_id for the club name
-        final clubResponse = await Supabase.instance.client
-            .from('football_clubs')
-            .select('id')
-            .eq('name', clubName)
-            .single();
+      // Create a batch of operations for efficiency
+      final batch = [];
 
-        // Then insert using the club_id
+      for (String clubName in uniqueClubs) {
+        try {
+          // First get the club_id for the club name
+          final clubResponse = await Supabase.instance.client
+              .from('football_clubs')
+              .select('id')
+              .eq('name', clubName)
+              .single();
+
+          // Add to the batch
+          batch.add({
+            'user_id': widget.userId,
+            'club_id': clubResponse['id'],
+          });
+        } catch (e) {
+          AppLogger.warning('Could not find club: $clubName, error: $e');
+          // Continue with the next club
+        }
+      }
+
+      // Insert all favorites using upsert to handle potential conflicts
+      if (batch.isNotEmpty) {
         await Supabase.instance.client
             .from('favorite_clubs')
-            .insert({
-              'user_id': widget.userId,
-              'club_id': clubResponse['id'],
-            });
+            .upsert(
+              batch,
+              onConflict: 'user_id,club_id' // Use the composite primary key
+            );
       }
 
       // Use a post-frame callback to ensure the navigation context is valid
@@ -137,7 +153,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       }
     }
   }
-
+  
   Future<void> _searchClubs(String query, int searchFieldIndex) async {
     if (!mounted) return; // Ensure the widget is still mounted
     final currentContext = context;

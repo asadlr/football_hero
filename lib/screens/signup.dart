@@ -4,104 +4,128 @@ import '../logger/logger.dart';
 import '../state/onboarding_state.dart';
 
 class Signup extends StatefulWidget {
-  const Signup({super.key});
+  const Signup({Key? key}) : super(key: key);
 
   @override
   State<Signup> createState() => _SignupState();
 }
 
 class _SignupState extends State<Signup> {
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
   String? userId;
-  bool _isTermsAccepted = false;
+  bool isTermsAccepted = false;
 
-  Future<bool> _onWillPop() async {
+  Future<bool> onWillPop() async {
     Navigator.pushReplacementNamed(context, '/');
     return false;
   }
 
-  Future<void> _signup() async {
-    final email = _emailController.text.trim();
-    final password = _passwordController.text.trim();
-    final confirmPassword = _confirmPasswordController.text.trim();
-
-    AppLogger.info('Signup process started');
-    AppLogger.info('Email: $email');
-
-    if (email.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-      AppLogger.warning('Empty fields detected');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('נא למלא את כל השדות')),
-      );
-      return;
-    }
-
-    if (password != confirmPassword) {
-      AppLogger.warning('Password mismatch detected');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('הסיסמאות אינן תואמות')),
-      );
-      return;
-    }
-
-    if (!_isTermsAccepted) {
-      AppLogger.warning('Terms and conditions not accepted');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('אנא אשרו את תנאי השימוש')),
-      );
-      return;
-    }
-
+Future<void> signup() async {
     try {
-      AppLogger.info('Attempting signup with Supabase');
-      final response = await Supabase.instance.client.auth.signUp(
-        email: email,
-        password: password,
-      );
+      final email = emailController.text.trim();
+      final password = passwordController.text.trim();
+      final confirmPassword = confirmPasswordController.text.trim();
 
-      // Validate user creation
-      if (response.user == null || response.user!.id.isEmpty) {
-        AppLogger.error('Signup failed: User ID is invalid or missing');
-        if (!mounted) return;
+      // Validation checks
+      if (email.isEmpty || !email.contains('@')) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('שגיאה בהרשמה: יצירת משתמש נכשלה')),
+          const SnackBar(content: Text('אנא הזן כתובת דוא"ל תקינה')),
         );
         return;
       }
-      userId = response.user!.id;
-      
-      // Create initial onboarding state with email
-      final onboardingState = OnboardingState(email: email);
-      
-      AppLogger.info('Signup successful: User ID: ${response.user!.id}');
-      
-      if (!mounted) return;
 
-      await Navigator.pushReplacementNamed(
-        context,
-        '/onboarding',
-        arguments: {
-          'userId': userId,
-          'onboardingState': onboardingState,
-        },
-      );
-    } on AuthException catch (e) {
-      AppLogger.error('AuthException during signup', error: e.message);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('שגיאה בהרשמה: ${e.message}')),
-      );
+      if (password.isEmpty || password.length < 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('הסיסמה חייבת להיות באורך של 6 תווים לפחות')),
+        );
+        return;
+      }
+
+      if (password != confirmPassword) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('הסיסמאות אינן תואמות')),
+        );
+        return;
+      }
+
+      if (!isTermsAccepted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('אנא אשר את תנאי השימוש')),
+        );
+        return;
+      }
+
+      AppLogger.info('=== Starting signup process ===');
+      AppLogger.info('Email entered: $email');
+
+       final supabase = Supabase.instance.client;
+
+      // Signup process
+      try {
+        final authResponse = await supabase.auth.signUp(
+          email: email,
+          password: password,
+          data: {
+            'timestamp': DateTime.now().toIso8601String(),
+            'registration_source': 'app_signup',
+          },
+        );
+
+        // Extract user
+        final user = authResponse.user;
+        // Remove unused session variable
+
+        if (user == null) {
+          AppLogger.error('Signup failed: No user returned');
+          throw 'Signup failed: No user returned';
+        }
+
+        userId = user.id;
+        AppLogger.info('User created in auth system. ID: $userId');
+
+        // Create onboarding state
+        final onboardingState = OnboardingState(email: email);
+
+        // Navigate to onboarding
+        if (mounted) {
+          await Navigator.pushReplacementNamed(
+            context,
+            '/onboarding',
+            arguments: {
+              'userId': userId,
+              'onboardingState': onboardingState,
+            },
+          );
+          AppLogger.info('Navigation completed successfully');
+        }
+
+      } on AuthException catch (e) {
+        // Handle specific signup errors
+        if (e.message.toLowerCase().contains('user already registered')) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('משתמש זה כבר רשום במערכת')),
+            );
+          }
+          return;
+        }
+        // Re-throw other auth exceptions
+        rethrow;
+      }
     } catch (e, stackTrace) {
-      AppLogger.error('Unexpected error during signup', error: e, stackTrace: stackTrace);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('שגיאה בלתי צפויה: $e')),
-      );
+      AppLogger.error('Unexpected error during signup', 
+        error: {
+          'Error': e.toString(),
+          'StackTrace': stackTrace.toString()
+        });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('שגיאה בלתי צפויה: $e')),
+        );
+      }
     }
   }
 
@@ -111,7 +135,7 @@ class _SignupState extends State<Signup> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
         if (!didPop) {
-          await _onWillPop();
+          await onWillPop();
         }
       },
       child: Directionality(
@@ -123,7 +147,7 @@ class _SignupState extends State<Signup> {
             leading: BackButton(
               color: Colors.black,
               onPressed: () {
-                _onWillPop();
+                onWillPop();
               },
             ),
           ),
@@ -161,7 +185,7 @@ class _SignupState extends State<Signup> {
                           ),
                           const SizedBox(height: 20.0),
                           TextField(
-                            controller: _emailController,
+                            controller: emailController,
                             decoration: const InputDecoration(
                               labelText: 'דוא"ל',
                               border: OutlineInputBorder(),
@@ -169,7 +193,7 @@ class _SignupState extends State<Signup> {
                           ),
                           const SizedBox(height: 20.0),
                           TextField(
-                            controller: _passwordController,
+                            controller: passwordController,
                             obscureText: true,
                             decoration: const InputDecoration(
                               labelText: 'סיסמה',
@@ -178,7 +202,7 @@ class _SignupState extends State<Signup> {
                           ),
                           const SizedBox(height: 20.0),
                           TextField(
-                            controller: _confirmPasswordController,
+                            controller: confirmPasswordController,
                             obscureText: true,
                             decoration: const InputDecoration(
                               labelText: 'אימות סיסמה',
@@ -189,10 +213,10 @@ class _SignupState extends State<Signup> {
                           Row(
                             children: [
                               Checkbox(
-                                value: _isTermsAccepted,
+                                value: isTermsAccepted,
                                 onChanged: (value) {
                                   setState(() {
-                                    _isTermsAccepted = value!;
+                                    isTermsAccepted = value!;
                                   });
                                 },
                               ),
@@ -209,7 +233,7 @@ class _SignupState extends State<Signup> {
                           ),
                           const SizedBox(height: 20.0),
                           ElevatedButton(
-                            onPressed: _signup,
+                            onPressed: signup,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 50.0,

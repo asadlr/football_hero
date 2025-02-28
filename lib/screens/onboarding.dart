@@ -103,135 +103,129 @@ class _OnboardingState extends State<Onboarding> {
   
 Future<void> _deleteUserRoleData(String userId, String previousRole) async {
   try {
-    // First delete role-specific team memberships
+    // Remove user from team memberships
     await Supabase.instance.client
-      .from('team_members')
-      .delete()
-      .eq('user_id', userId);
+        .from('team_members')
+        .delete()
+        .eq('user_id', userId);
 
-    // Then delete role-specific data
+    // Remove user from community teams (NEW)
+    await Supabase.instance.client
+        .from('community_teams')
+        .delete()
+        .eq('user_id', userId);
+
+    // Delete role-specific data
     switch (previousRole) {
       case 'player':
-        // Delete player data
         await Supabase.instance.client
-          .from('players')
-          .delete()
-          .eq('id', userId);
-        break;
-      
-      case 'coach':
-        AppLogger.info('Starting to delete coach data for user: $userId');
-        
-        // Delete coach data
+            .from('mentor_player')
+            .delete()
+            .eq('player_id', userId);
         await Supabase.instance.client
-          .from('coaches')
-          .delete()
-          .eq('id', userId);
-        
-        // Delete certificate files from storage
+            .from('parent_player')
+            .delete()
+            .eq('player_id', userId);
         try {
-          final fileList = await Supabase.instance.client
-            .storage
-            .from('coach_certificate')
-            .list(path: userId);
-
-          for (final file in fileList) {
-            final fullPath = '$userId/${file.name}';
-            await Supabase.instance.client
-              .storage
-              .from('coach_certificate')
-              .remove([fullPath]);
-          }
-
-          // Check for files directly named with user ID
-          final allFiles = await Supabase.instance.client
-            .storage
-            .from('coach_certificate')
-            .list();
-
-          final userFiles = allFiles.where((file) => 
-            file.name.startsWith('${userId}_')
-          ).toList();
-
-          for (final file in userFiles) {
-            await Supabase.instance.client
-              .storage
-              .from('coach_certificate')
-              .remove([file.name]);
-          }
-        } catch (storageError, storageStackTrace) {
-          AppLogger.error(
-            'Error deleting coach certificate files', 
-            error: storageError,
-            stackTrace: storageStackTrace
-          );
+          await Supabase.instance.client
+              .from('players')
+              .delete()
+              .eq('id', userId);
+        } catch (e) {
+          AppLogger.info('Legacy players table may have been removed');
         }
         break;
 
-      case 'community':
-        // Delete community manager data
+      case 'coach':
         await Supabase.instance.client
-          .from('community_managers')
-          .delete()
-          .eq('user_id', userId);
+            .from('users')
+            .update({
+              'certificate_number': null,
+              'certificate_url': null,
+              'is_professional': false,
+              'personal_id': null
+            })
+            .eq('id', userId);
+        try {
+          await Supabase.instance.client
+              .from('coaches')
+              .delete()
+              .eq('id', userId);
+        } catch (e) {
+          AppLogger.info('Legacy coaches table may have been removed');
+        }
+        break;
+
+      case 'community_manager':
+        try {
+          await Supabase.instance.client
+              .from('community_managers')
+              .delete()
+              .eq('user_id', userId);
+        } catch (e) {
+          AppLogger.info('Legacy community_managers table may have been removed');
+        }
         break;
 
       case 'parent':
-        // Delete parent-player relationships
         await Supabase.instance.client
-          .from('parents')
-          .delete()
-          .eq('parent_id', userId);
+            .from('parent_player')
+            .delete()
+            .eq('parent_id', userId);
+        try {
+          await Supabase.instance.client
+              .from('parents')
+              .delete()
+              .eq('parent_id', userId);
+        } catch (e) {
+          AppLogger.info('Legacy parents table may have been removed');
+        }
         break;
 
       case 'mentor':
-        // Delete mentor data
         await Supabase.instance.client
-          .from('mentor_communities')
-          .delete()
-          .eq('mentor_id', userId);
+            .from('mentor_player')
+            .delete()
+            .eq('mentor_id', userId);
         await Supabase.instance.client
-          .from('mentors')
-          .delete()
-          .eq('id', userId);
+            .from('mentor_communities')
+            .delete()
+            .eq('mentor_id', userId);
+        try {
+          await Supabase.instance.client
+              .from('mentors')
+              .delete()
+              .eq('id', userId);
+        } catch (e) {
+          AppLogger.info('Legacy mentors table may have been removed');
+        }
         break;
-      }
+    }
 
-    // Clean up any event attendances
+    // Clean up generic user data
     await Supabase.instance.client
-      .from('event_attendees')
-      .delete()
-      .eq('user_id', userId);
-
-    // Clean up any forum posts
+        .from('event_attendees')
+        .delete()
+        .eq('user_id', userId);
     await Supabase.instance.client
-      .from('forum_posts')
-      .delete()
-      .eq('user_id', userId);
-
-    // Clean up any announcement replies
+        .from('forum_posts')
+        .delete()
+        .eq('user_id', userId);
     await Supabase.instance.client
-      .from('replies')
-      .delete()
-      .eq('user_id', userId);
-
-    // Clean up any favorite clubs
+        .from('replies')
+        .delete()
+        .eq('user_id', userId);
     await Supabase.instance.client
-      .from('favorite_clubs')
-      .delete()
-      .eq('user_id', userId);
+        .from('favorite_clubs')
+        .delete()
+        .eq('user_id', userId);
 
     AppLogger.info('Successfully deleted previous role data for user: $userId, previous role: $previousRole');
   } catch (e, stackTrace) {
-    AppLogger.error(
-      'Error deleting previous role data', 
-      error: e, 
-      stackTrace: stackTrace
-    );
+    AppLogger.error('Error deleting previous role data', error: e, stackTrace: stackTrace);
     rethrow;
   }
 }
-
 
 Future<bool> _onWillPop() async {
   if (!mounted) return false; // Check if the State is still mounted
@@ -265,7 +259,7 @@ Future<bool> _onWillPop() async {
   return result ?? false;
 }
   
-  Future<void> _deleteUserData() async {
+Future<void> _deleteUserData() async {
     try {
       // Delete user data from all relevant tables
       await Supabase.instance.client
@@ -280,7 +274,6 @@ Future<bool> _onWillPop() async {
     }
   }
 
-
 Future<void> _submitAndNavigate() async {
   if (_formKey.currentState!.validate()) {
     setState(() {
@@ -292,10 +285,14 @@ Future<void> _submitAndNavigate() async {
       final dob = _selectedDate;
       final address = _addressController.text.trim();
       final city = _cityController.text.trim();
-      final role = _selectedRole;
+      final validRoles = ['guest', 'player', 'parent', 'coach', 'community_manager', 'mentor', 'admin', 'user'];
+      final role = (_selectedRole != null && validRoles.contains(_selectedRole)) ? _selectedRole : 'player';
+
+      AppLogger.info('Final role being sent to Supabase: $role');
+
       final phone = _phoneController.text.trim().replaceAll('-', '');
       final previousRole = _onboardingState.role;
-
+      
       AppLogger.info('Submitting onboarding form');
       AppLogger.info('User Info: Name: $name, DOB: $dob, Role: $role, Previous Role: $previousRole');
 
@@ -313,11 +310,8 @@ Future<void> _submitAndNavigate() async {
 
       final age = DateTime.now().year - dob.year;
 
-      // Handle role change and data deletion if necessary
       if (previousRole != null && role != previousRole) {
         AppLogger.info('Role change detected: $previousRole -> $role');
-        
-        // Show confirmation dialog for role change
         if (!mounted) return;
         final shouldProceed = await showDialog<bool>(
           context: context,
@@ -340,7 +334,7 @@ Future<void> _submitAndNavigate() async {
         if (!shouldProceed) {
           setState(() {
             _isLoading = false;
-            _selectedRole = previousRole; // Revert role selection
+            _selectedRole = previousRole;
           });
           return;
         }
@@ -359,16 +353,15 @@ Future<void> _submitAndNavigate() async {
           );
           setState(() {
             _isLoading = false;
-            _selectedRole = previousRole; // Revert role selection
+            _selectedRole = previousRole;
           });
           return;
         }
       }
 
-      // Update user data
       try {
         AppLogger.info('Updating user data in database');
-        await Supabase.instance.client.from('users').upsert({
+        final response = await Supabase.instance.client.from('users').upsert({
           'id': userId,
           'name': name,
           'dob': dob.toIso8601String(),
@@ -376,9 +369,15 @@ Future<void> _submitAndNavigate() async {
           'address': address,
           'city': city,
           'role': role,
-          'phone_number': role == 'player' ? null : phone, // Only save for non-players
-          'created_at': DateTime.now().toIso8601String(),
+          'phone_number': role == 'player' ? null : phone,
         });
+        
+        if (response != null && response.error != null) {
+          AppLogger.error('Supabase Error: ${response.error?.message}', error: response.error, stackTrace: StackTrace.current);
+        } else {
+          AppLogger.info('User data successfully updated in Supabase');
+      }
+
       } catch (e, stackTrace) {
         AppLogger.error('Error updating user data', error: e, stackTrace: stackTrace);
         if (!mounted) return;
@@ -394,7 +393,6 @@ Future<void> _submitAndNavigate() async {
         return;
       }
 
-      // Update onboarding state
       final updatedState = _onboardingState.copyWith(
         name: name,
         dateOfBirth: dob,
@@ -402,7 +400,6 @@ Future<void> _submitAndNavigate() async {
         address: address,
         city: city,
         phoneNumber: role == 'player' ? null : phone,
-
       );
 
       if (!mounted) return;
@@ -429,7 +426,7 @@ Future<void> _submitAndNavigate() async {
   }
 }
 
-  void _navigateBasedOnRole(String? role, OnboardingState state) {
+void _navigateBasedOnRole(String? role, OnboardingState state) {
     if (role == null) {
       AppLogger.warning('No role selected');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -469,7 +466,7 @@ Future<void> _submitAndNavigate() async {
           '/onboarding/mentor',
           arguments: args,
         );
-      case 'community':
+      case 'community_manager':
         Navigator.pushReplacementNamed(
           context,
           '/onboarding/community',
@@ -483,7 +480,7 @@ Future<void> _submitAndNavigate() async {
     }
   }
 
-  Future<void> _pickDate() async {
+Future<void> _pickDate() async {
     AppLogger.info('Opening date picker');
     final pickedDate = await showDatePicker(
       context: context,
@@ -601,7 +598,7 @@ Widget build(BuildContext context) {
                               DropdownMenuItem(value: 'player', child: Text('שחקן')),
                               DropdownMenuItem(value: 'parent', child: Text('הורה')),
                               DropdownMenuItem(value: 'coach', child: Text('מאמן')),
-                              DropdownMenuItem(value: 'community', child: Text('צוות קהילתי')),
+                              DropdownMenuItem(value: 'community_manager', child: Text('צוות קהילתי')),
                               DropdownMenuItem(value: 'mentor', child: Text('מנטור')),
                             ],
                             validator: (value) => value == null ? 'נא לבחור סוג משתמש' : null,

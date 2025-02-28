@@ -1,188 +1,77 @@
 # FootballHero
 
-<div align="center">
+FootballHero is a video-sharing platform built with Flutter and Supabase, designed for football players, coaches, and youth teams. The app follows a lean and efficient development approach, prioritizing essential features, video storage optimization, and cost-effective scalability.
 
-![FootballHero Logo](assets/images/logo.webp)
+## Development Framework
 
-A social video-sharing platform for football enthusiasts, built with Flutter and Supabase.
+### Frontend
 
-[![Flutter Version](https://img.shields.io/badge/Flutter-%3E%3D3.5.0-blue.svg)](https://flutter.dev/)
-[![Supabase](https://img.shields.io/badge/Supabase-v2.0.0-green.svg)](https://supabase.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+- **Framework**: Flutter (>=3.5.0)
+- **Language**: Dart
+- **Testing**:
+  - Integration Testing: Flutter integration test package
+  - Unit Testing: Mockito
 
-[Key Features](#key-features) •
-[Getting Started](#getting-started) •
-[Installation](#installation) •
-[Documentation](#documentation) •
-[Contributing](#contributing)
+### Backend
 
-</div>
+- **Platform**: Supabase
+  - Authentication: Supabase Auth
+  - Database: PostgreSQL
+  - Storage: Supabase Storage
 
-## About The Project
+### Additional Services
 
-FootballHero is a TikTok-style video-sharing platform specifically designed for football players, coaches, and enthusiasts. The app facilitates sharing football videos, receiving feedback, and building a community around the sport, with a special focus on youth development and team management.
+- **Notifications**: Firebase Cloud Messaging
+- **Content Moderation**: Google Perspective API
+- **Payment Processing**: Isracard/PayPlus integration
+- **Security Testing**: OWASP ZAP for CSRF & XSS detection
 
-### Key Features
+## Version Control
 
-- 📱 **Multi-Role System**
-  - Player profiles with skill tracking
-  - Coach verification system
-  - Parental controls for under-13 users
-  - Community engagement features
-
-- 🌐 **Dual Language Support**
-  - Complete Hebrew (RTL) support
-  - English interface
-  - Adaptive layouts
-
-- 🎥 **Video Sharing**
-  - Easy upload and sharing
-  - Team-based content organization
-  - Content moderation
-
-- 🔒 **Security & Privacy**
-  - Age-appropriate content filtering
-  - Parental oversight features
-  - Role-based access control
-
-### Built With
-
-- Frontend Framework: [Flutter](https://flutter.dev/)
-- Backend Services: [Supabase](https://supabase.com/)
-- Authentication: Supabase Auth
-- Database: PostgreSQL
-- Storage: Supabase Storage
+- **Git Repository**: [https://github.com/yourusername/football_hero.git](https://github.com/yourusername/football_hero.git)
+- **Branching Strategy**: Structured branching strategy for feature development
 
 ## Getting Started
 
 ### Prerequisites
 
-- Flutter (>=3.5.0)
+- Flutter SDK (>=3.5.0)
 - Dart SDK
-- Git
-- A Supabase account and project
+- Supabase account and project
 
-### Installation
+### Software Versions Used
 
-1. Clone the repository
-```bash
-git clone https://github.com/yourusername/football_hero.git
-```
+The following software versions were tested and confirmed to work together:
 
-2. Install dependencies
-```bash
-cd football_hero
-flutter pub get
-```
+- **Flutter**: 3.24.5  
+- **Dart**: 3.5.4  
+- **Supabase Flutter SDK**: 2.8.1  
+- **Gradle**: 8.11.1  
+- **Android Studio**: Flamingo 2024.2  
+- **Java**: Eclipse Adoptium JDK 17.0.13.11  
+- **flutter_dotenv**: 5.2.1  
 
-3. Create a `.env` file in the project root
-```env
-SUPABASE_URL=your_supabase_url
-SUPABASE_ANON_KEY=your_supabase_anon_key
-ENV=development
-LOG_INFO=true
-LOG_WARNING=true
-LOG_ERROR=true
-```
+#### Environment Variables
+- Example `.env`:
+  ```env
+  SUPABASE_URL=https://your-supabase-url.supabase.co
+  SUPABASE_ANON_KEY=your-supabase-anon-key
+  ENV=development
+  LOG_INFO=true
+  LOG_WARNING=true
+  LOG_ERROR=true
 
-4. Run the app
-```bash
-flutter run
-```
-
-## Architecture
-
-### Database Schema
-
-```sql
-public.users
-- id (uuid, PK)
-- name (text)
-- role (text)
-- dob (date)
-- parent_id (uuid, FK)
-- address (text)
-- city (text)
-
-public.teams
-- id (uuid, PK)
-- name (text)
-- address (text)
-- status (team_status)
-- community_id (uuid, FK)
-- verified_by_coach_id (uuid, FK)
-
-public.team_members
-- team_id (uuid, FK)
-- user_id (uuid, FK)
-- role (text)
-```
-
-### Security Features
-
-- Row Level Security (RLS) policies
-- Role-based access control
-- Parent-child account linking
-- Content moderation workflow
-
-## Documentation
-
-### File Structure
-```
-lib/
-├── main.dart
-├── logger/
-│   └── logger.dart
-├── screens/
-│   ├── welcome.dart
-│   ├── login.dart
-│   ├── signup.dart
-│   └── onboarding/
-│       ├── player_onboarding.dart
-│       ├── coach_onboarding.dart
-│       └── ...
-└── widgets/
-    └── team_verification_banner.dart
-```
-
-### Environment Configuration
-
-Development environment settings:
-```env
-ENV=development
-LOG_INFO=true
-LOG_WARNING=true
-LOG_ERROR=true
-```
-
-Production environment settings:
-```env
-ENV=production
-LOG_INFO=false
-LOG_WARNING=true
-LOG_ERROR=true
-```
+#### Recommended Production Settings
+- For Production Environment:
+  ENV=production
+  LOG_INFO=false
+  LOG_WARNING=true
+  LOG_ERROR=true
 
 ## Contributing
 
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Contributions are welcome! Please read the [contributing guidelines](CONTRIBUTING.md) before getting started.
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
-
-## Contact
-
-Your Name - [@yourtwitter](https://twitter.com/yourtwitter)
-
-Project Link: [https://github.com/yourusername/football_hero](https://github.com/yourusername/football_hero)
-
-## Acknowledgments
-
-- [Flutter](https://flutter.dev/)
-- [Supabase](https://supabase.com/)
-- [FlutterFlow](https://flutterflow.io/)
+This project is licensed under the [MIT License](LICENSE).

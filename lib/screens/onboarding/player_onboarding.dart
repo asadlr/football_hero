@@ -104,59 +104,63 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
     }
   }
   
-  Future<void> _submitAndNavigate() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
+Future<void> _submitAndNavigate() async {
+  if (_formKey.currentState!.validate()) {
+    setState(() {
       _isLoading = true;
-       });
-      final teamName = _teamNameController.text.trim();
-      final height = int.tryParse(_heightController.text.trim());
-      final weight = int.tryParse(_weightController.text.trim());
-      final positions = _selectedPositions.toList();
-      final strongLeg = _selectedLeg;
+    });
+    final teamName = _teamNameController.text.trim();
+    final height = int.tryParse(_heightController.text.trim());
+    final weight = int.tryParse(_weightController.text.trim());
+    final positions = _selectedPositions.toList();
+    final strongLeg = _selectedLeg;
 
-      // Create the PlayerSkills object
-      final skills = PlayerSkills(
-        speed: _speed,
-        headers: _headers,
-        defending: _defending,
-        passing: _passing,
-        scoring: _scoring,
-        goalkeeping: _goalkeeping,
-      );
+    // Create the PlayerSkills object
+    final skills = PlayerSkills(
+      speed: _speed,
+      headers: _headers,
+      defending: _defending,
+      passing: _passing,
+      scoring: _scoring,
+      goalkeeping: _goalkeeping,
+    );
 
-          // Create updated state BEFORE navigation
-        final updatedState = _onboardingState.copyWith(
-          teamName: teamName,
-          height: height,
-          weight: weight,
-          positions: positions,
-          strongLeg: strongLeg,
-          skills: skills,
-        );
+    // Create updated state BEFORE navigation
+    final updatedState = _onboardingState.copyWith(
+      teamName: teamName,
+      height: height,
+      weight: weight,
+      positions: positions,
+      strongLeg: strongLeg,
+      skills: skills,
+    );
 
-      AppLogger.info('Player Onboarding form submitted');
-      AppLogger.info(
-        'Team Name: $teamName, Height: $height, Weight: $weight, Positions: $positions, Leg: $strongLeg, Skills: $skills',
-      );
+    AppLogger.info('Player Onboarding form submitted');
+    AppLogger.info(
+      'Team Name: $teamName, Height: $height, Weight: $weight, Positions: $positions, Leg: $strongLeg, Skills: $skills',
+    );
 
-      try {
-        String? teamId;
-        // Only get team ID if a team name was provided
-        if (teamName.isNotEmpty) {
-          teamId = await _getTeamIdByName(teamName);
-          if (teamId == null) {
-            if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
-            );
-            return; // Stop the submission process here
-          }
+    try {
+      String? teamId;
+      // Only get team ID if a team name was provided
+      if (teamName.isNotEmpty) {
+        teamId = await _getTeamIdByName(teamName);
+        if (teamId == null) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
+          );
+          setState(() {
+            _isLoading = false;
+          });
+          return; // Stop the submission process here
         }
+      }
 
-        if (!mounted) return;
+      if (!mounted) return;
 
-        // Insert into players table using user_id as id
+      // Try to use existing players table first
+      try {
         await Supabase.instance.client
           .from('players')
           .insert({
@@ -167,44 +171,68 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
             'strong_leg': strongLeg,
             'skills': jsonEncode(skills.toMap()), // Encode the PlayerSkills object to a Map
           });
-
-        if (teamId != null) {
-        await Supabase.instance.client
-          .from('team_members')
-          .insert({
-            'user_id': _userId,
-            'team_id': teamId,
-            'role': 'player',
-            'status': 'active'
-          });
-        }
+      } catch (playerInsertError) {
+        AppLogger.warning('Could not insert into players table, possibly removed. Storing player data in metadata: $playerInsertError');
         
-        if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/onboarding/favorites',
-            arguments: {
-              'userId': _userId,
-              'onboardingState': updatedState,
-            },
-          );
+        // If players table is gone, store the data as metadata in a JSON field in users table
+        final Map<String, dynamic> playerMetadata = {
+          'height': height,
+          'weight': weight,
+          'positions': positions,
+          'strong_leg': strongLeg,
+          'skills': skills.toMap(),
+        };
+        
+        await Supabase.instance.client
+          .from('users')
+          .update({
+            'player_metadata': playerMetadata
+          })
+          .eq('id', _userId);
+      }
+
+      if (teamId != null) {
+        try {
+          // Insert using composite key approach
+          await Supabase.instance.client
+            .from('team_members')
+            .insert({
+              'user_id': _userId,
+              'team_id': teamId,
+              'role': 'player',
+              'status': 'pending'
+            });
+        } catch (teamMemberError) {
+          AppLogger.error('Error adding user to team', error: teamMemberError);
+          // Don't rethrow, since joining a team is not critical to continue
         }
-      } catch (e, stackTrace) {
-        AppLogger.error('Error during player onboarding', error: e, stackTrace: stackTrace);
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred: $e')),
+      }
+      
+      if (mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/onboarding/favorites',
+          arguments: {
+            'userId': _userId,
+            'onboardingState': updatedState,
+          },
         );
-      } finally {
-        if (mounted) {
+      }
+    } catch (e, stackTrace) {
+      AppLogger.error('Error during player onboarding', error: e, stackTrace: stackTrace);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: $e')),
+      );
+    } finally {
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });     
       }
     }
   }
-  }
-  
+}
   @override
   Widget build(BuildContext context) {
   return PopScope(
@@ -301,7 +329,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
     );
   }
   
-  Widget _buildTeamNameField() {
+Widget _buildTeamNameField() {
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -320,6 +348,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                 }
 
                 try {
+                  // Now this should work with your new RLS policy
                   final response = await Supabase.instance.client
                       .from('teams')
                       .select('name')
@@ -346,26 +375,65 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                 FocusNode fieldFocusNode,
                 VoidCallback onFieldSubmitted,
               ) {
-               return TextFormField(
-                controller: fieldController,
-                focusNode: fieldFocusNode,
-                decoration: const InputDecoration(
-                  labelText: 'שם הקבוצה',
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: alternateThemeColor,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  isDense: true,
-                ),
-                  onChanged: (value) {
-                    if (value.isNotEmpty) {
+                // Keep a reference to the autocomplete controller
+                // This allows us to sync it with _teamNameController
+                if (fieldController.text != _teamNameController.text) {
+                  fieldController.text = _teamNameController.text;
+                }
+                
+                return TextFormField(
+                  controller: fieldController,
+                  focusNode: fieldFocusNode,
+                  decoration: const InputDecoration(
+                    labelText: 'שם הקבוצה',
+                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: alternateThemeColor,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    isDense: true,
+                  ),
+                  onChanged: (value) async {
+                    // Update our main controller
+                    _teamNameController.text = value;
+                    
+                    if (value.isEmpty) {
+                      setState(() {
+                        _isTeamValid = true; // Empty is valid for optional field
+                      });
+                      return;
+                    }
+                    
+                    // Only validate if the text has a reasonable length
+                    if (value.length >= 3) {
+                      try {
+                        // Check if team exists with exact name match
+                        final exactMatch = await Supabase.instance.client
+                            .from('teams')
+                            .select('name')
+                            .eq('name', value)
+                            .limit(1);
+                        
+                        setState(() {
+                          // If we get any results back, the team exists
+                          _isTeamValid = exactMatch != null && exactMatch.isNotEmpty;
+                        });
+                      } catch (error) {
+                        debugPrint('Error validating team: $error');
+                        setState(() {
+                          _isTeamValid = false;
+                        });
+                      }
+                    } else {
                       setState(() {
                         _isTeamValid = false;
                       });
                     }
                   },
                   validator: (value) {
-                    if (value?.isNotEmpty == true && !_isTeamValid) {
+                    if (value?.isEmpty == true) {
+                      return null; // Optional field can be empty
+                    }
+                    if (!_isTeamValid) {
                       return 'יש לבחור קבוצה מהרשימה';
                     }
                     return null;
@@ -417,7 +485,8 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
     ],
   );
 }
-  
+
+
   Widget _buildPositionSelection() {
     const positions = [
       {'label': 'שער', 'value': 'goalkeeper'},

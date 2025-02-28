@@ -80,99 +80,85 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
     }
   }
 
-Future<void> _submitAndNavigate() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _submitAndNavigate() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
 
-    try {
-      final idNumber = _idNumberController.text.trim();
-      final communityName = _communityNameController.text.trim();
+      try {
+        final idNumber = _idNumberController.text.trim();
+        final communityName = _communityNameController.text.trim();
 
-      if (communityName.isNotEmpty) {
-        // Get the community ID
-        final communityId = await _getCommunityByName(communityName);
-        if (communityId == null) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('הקהילה שהוזנה לא נמצאה במערכת')),
+        // Update personal_id in the users table
+        await Supabase.instance.client
+            .from('users')
+            .update({'personal_id': idNumber})
+            .eq('id', _userId);
+
+        if (communityName.isNotEmpty) {
+          // Get the community ID
+          final communityId = await _getCommunityByName(communityName);
+          if (communityId == null) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('הקהילה שהוזנה לא נמצאה במערכת')),
+            );
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+
+          // Associate mentor with community
+          await Supabase.instance.client
+              .from('mentor_communities')
+              .upsert({
+                'mentor_id': _userId,
+                'community_id': communityId,
+                'status': 'pending',
+                'created_by': _userId,
+                'approved_by': null,
+                'created_at': DateTime.now().toIso8601String(),
+                'updated_at': DateTime.now().toIso8601String(),
+              });
+
+          AppLogger.info('Created mentor-community association');
+        }
+
+        // Update state
+        final updatedState = _onboardingState.copyWith(
+          idNumber: idNumber,
+          communityName: communityName,
+        );
+
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/onboarding/favorites',
+            arguments: {
+              'userId': _userId,
+              'onboardingState': updatedState,
+            },
           );
+        }
+      } catch (e, stackTrace) {
+        AppLogger.error('Error during mentor onboarding', error: e, stackTrace: stackTrace);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('An error occurred: $e')),
+          );
+        }
+      } finally {
+        if (mounted) {
           setState(() {
             _isLoading = false;
           });
-          return;
         }
-
-        // Create the mentor record
-        await Supabase.instance.client
-            .from('mentors')
-            .upsert({
-              'id': _userId,
-              'user_id': _userId,
-              'id_number': idNumber,
-              'status': 'pending',
-              'created_at': DateTime.now().toIso8601String(),
-            });
-
-        // Associate mentor with community
-        await Supabase.instance.client
-            .from('mentor_communities')
-            .upsert({
-              'mentor_id': _userId,
-              'community_id': communityId,
-              'status': 'active',
-              'created_at': DateTime.now().toIso8601String(),
-            });
-
-        AppLogger.info('Created mentor record and community association');
-      } else {
-        // If no community selected, just create the mentor record
-        await Supabase.instance.client
-            .from('mentors')
-            .upsert({
-              'id': _userId,
-              'user_id': _userId,
-              'id_number': idNumber,
-              'status': 'pending',
-              'created_at': DateTime.now().toIso8601String(),
-            });
-        
-        AppLogger.info('Created mentor record without community');
-      }
-
-      // Update state
-      final updatedState = _onboardingState.copyWith(
-        idNumber: idNumber,
-        communityName: communityName,
-      );
-
-      if (mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/favorites',
-          arguments: {
-            'userId': _userId,
-            'onboardingState': updatedState,
-          },
-        );
-      }
-    } catch (e, stackTrace) {
-      AppLogger.error('Error during mentor onboarding', error: e, stackTrace: stackTrace);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
   }
-}
+  
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -303,7 +289,7 @@ Future<void> _submitAndNavigate() async {
     );
   }
 
-Widget _buildCommunityNameField() {
+  Widget _buildCommunityNameField() {
   if (!_isInitialized) {
     return const Center(child: CircularProgressIndicator());
   }

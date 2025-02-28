@@ -69,7 +69,7 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
 Future<String?> _getCommunityIdForTeam(String teamId) async {
   try {
     final response = await Supabase.instance.client
-        .from('team_communities')
+        .from('community_teams')
         .select('community_id')
         .eq('team_id', teamId)
         .limit(1)
@@ -89,7 +89,7 @@ Future<String> _createNewCommunity(String teamName) async {
         .insert({
           'name': teamName,
           'created_at': DateTime.now().toIso8601String(),
-          'status': 'active'
+          'status': 'pending'
         })
         .select()
         .single();
@@ -104,7 +104,7 @@ Future<String> _createNewCommunity(String teamName) async {
 Future<void> _associateTeamWithCommunity(String teamId, String communityId) async {
   try {
     await Supabase.instance.client
-        .from('team_communities')
+        .from('community_teams')
         .insert({
           'team_id': teamId,
           'community_id': communityId,
@@ -116,103 +116,103 @@ Future<void> _associateTeamWithCommunity(String teamId, String communityId) asyn
   }
 }
 
-Future<void> _submitAndNavigate() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _submitAndNavigate() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
 
-    try {
-      final idNumber = _idNumberController.text.trim();
-      final teamName = _communityNameController.text.trim();
+      try {
+        final idNumber = _idNumberController.text.trim();
+        final teamName = _communityNameController.text.trim();
 
-      String? teamId;
-      String? communityId;
-      
-      // Only process team and community if a team name was provided
-      if (teamName.isNotEmpty) {
-        teamId = await _getTeamIdByName(teamName);
-        if (teamId == null) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
+        String? teamId;
+        String? communityId;
+        
+        // Only process team and community if a team name was provided
+        if (teamName.isNotEmpty) {
+          // Get team ID - this function already exists in your file
+          teamId = await _getTeamIdByName(teamName);
+          if (teamId == null) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
+            );
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+
+          // Check if team is already associated with a community
+          communityId = await _getCommunityIdForTeam(teamId);
+          
+          if (communityId == null) {
+            // Create a new community
+            communityId = await _createNewCommunity(teamName);
+            // Associate team with the new community
+            await _associateTeamWithCommunity(teamId, communityId);
+          }
+        }
+
+        // Update personal_id in users table
+        await Supabase.instance.client
+            .from('users')
+            .update({'personal_id': idNumber})
+            .eq('id', _userId);
+
+        // Create community_teams relationship if needed
+        if (teamId != null && communityId != null) {
+          try {
+            await Supabase.instance.client
+                .from('community_teams')
+                .upsert({
+                  'community_id': communityId,
+                  'team_id': teamId,
+                  'status': 'pending',
+                  'created_by': _userId,
+                  'assigned_by_id': _userId,
+                  'created_at': DateTime.now().toIso8601String()
+                });
+          } catch (e) {
+            AppLogger.warning('Error creating community_teams relationship: $e');
+            // Continue since this is not a critical error
+          }
+        }
+
+        // Update state
+        final updatedState = _onboardingState.copyWith(
+          idNumber: idNumber,
+          teamName: teamName,
+        );
+
+        if (mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/onboarding/favorites',
+            arguments: {
+              'userId': _userId,
+              'onboardingState': updatedState,
+            },
           );
+        }
+      } catch (e, stackTrace) {
+        AppLogger.error('Error during community manager onboarding', error: e, stackTrace: stackTrace);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('An error occurred: $e')),
+          );
+        }
+      } finally {
+        if (mounted) {
           setState(() {
             _isLoading = false;
           });
-          return;
         }
-
-        // Check if team is already associated with a community
-        communityId = await _getCommunityIdForTeam(teamId);
-        
-        if (communityId == null) {
-          // Create a new community
-          communityId = await _createNewCommunity(teamName);
-          // Associate team with the new community
-          await _associateTeamWithCommunity(teamId, communityId);
-        }
-      }
-
-      // Insert into users table if not exists
-      final userExists = await _checkUserExists(_userId);
-      if (!userExists) {
-        await Supabase.instance.client.from('users').insert({
-          'id': _userId,
-          'role': 'community_manager',
-        });
-      }
-
-      // Insert into community_managers table - now handles case where no team is selected
-      final managerData = {
-        'user_id': _userId,
-        'id_number': idNumber,
-        'status': 'pending'
-      };
-      
-      // Only add team and community IDs if they exist
-      if (teamId != null && communityId != null) {
-        managerData['team_id'] = teamId;
-        managerData['community_id'] = communityId;
-      }
-
-      await Supabase.instance.client
-          .from('community_managers')
-          .upsert(managerData);
-
-      // Update state
-      final updatedState = _onboardingState.copyWith(
-        idNumber: idNumber,
-        teamName: teamName,
-      );
-
-      if (mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/favorites',
-          arguments: {
-            'userId': _userId,
-            'onboardingState': updatedState,
-          },
-        );
-      }
-    } catch (e, stackTrace) {
-      AppLogger.error('Error during community manager onboarding', error: e, stackTrace: stackTrace);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
   }
-}
-
+  
   Future<bool> _checkUserExists(String userId) async {
     try {
       final response = await Supabase.instance.client

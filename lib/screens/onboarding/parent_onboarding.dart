@@ -97,7 +97,7 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
     );
   }
 
- Future<Map<String, dynamic>?> _verifyPlayer(String email) async {
+  Future<Map<String, dynamic>?> _verifyPlayer(String email) async {
   print('Function called with email: $email');
   try {
     print('================== START VERIFY PLAYER ==================');
@@ -168,7 +168,8 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
     print('================== END VERIFY PLAYER ==================');
   }
 }
-Future<bool> _showVerificationPopup(Map<String, dynamic> playerData) async {
+
+  Future<bool> _showVerificationPopup(Map<String, dynamic> playerData) async {
   return await showDialog<bool>(
     context: context,
     builder: (BuildContext context) {
@@ -199,7 +200,6 @@ Future<bool> _showVerificationPopup(Map<String, dynamic> playerData) async {
   ) ?? false;
 }
 
-
 Future<void> _submitAndNavigate() async {
   if (!_formKey.currentState!.validate()) {
     return;
@@ -211,6 +211,13 @@ Future<void> _submitAndNavigate() async {
 
   try {
     final playerEmail = _playerEmailController.text.trim();
+    final personalId = _parentIdController.text.trim();
+    
+    // Update personal_id in the users table
+    await Supabase.instance.client
+        .from('users')
+        .update({'personal_id': personalId})
+        .eq('id', _userId);
     
     if (playerEmail.isNotEmpty) {
       // Verify player only if email is provided
@@ -239,6 +246,20 @@ Future<void> _submitAndNavigate() async {
         _isPlayerValid = true;
         _playerUserId = playerData['userId'];
       });
+      
+      // Create parent-player relationship in the new table
+      if (_playerUserId != null) {
+        await Supabase.instance.client
+            .from('parent_player')
+            .upsert({
+              'parent_id': _userId,
+              'player_id': _playerUserId,
+              'status': 'pending',
+              'created_by': _userId,
+              'created_at': DateTime.now().toIso8601String()
+            },
+            onConflict: 'parent_id,player_id');
+      }
     } else {
       // No player email provided, proceed without player verification
       setState(() {
@@ -247,15 +268,6 @@ Future<void> _submitAndNavigate() async {
       });
     }
 
-    // Insert into parents table
-    await Supabase.instance.client
-        .from('parents')
-        .upsert({
-          'parent_id': _userId,
-          'player_id': _playerUserId,
-        },
-        onConflict: 'parent_id');
-
     if (mounted) {
       Navigator.pushReplacementNamed(
         context,
@@ -263,13 +275,14 @@ Future<void> _submitAndNavigate() async {
         arguments: {
           'userId': _userId,
           'onboardingState': _onboardingState.copyWith(
-            parentId: _parentIdController.text.trim(),
+            parentId: personalId,
             playerUserId: _playerUserId,
           ),
         },
       );
     }
   } catch (e) {
+    AppLogger.error('Error in parent onboarding submission', error: e);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('אירעה שגיאה: $e')),
@@ -283,7 +296,7 @@ Future<void> _submitAndNavigate() async {
     }
   }
 }
-Future<bool> _checkUserExists(String userId) async {
+  Future<bool> _checkUserExists(String userId) async {
     try {
       final response = await Supabase.instance.client
           .from('users')
@@ -413,7 +426,7 @@ Future<bool> _checkUserExists(String userId) async {
     );
   }
 
-Widget _buildPlayerEmailField() {
+  Widget _buildPlayerEmailField() {
   if (!_isInitialized) {
     return const Center(child: CircularProgressIndicator());
   }

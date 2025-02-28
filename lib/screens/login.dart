@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'forgot_password.dart';
+import 'home.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -33,7 +34,12 @@ class _LoginState extends State<Login> {
 
       if (response.user != null) {
         if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/success', arguments: response.user!.id);
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomeScreen(userId: response.user!.id),
+          ),
+        );
       }
     } on AuthException catch (e) {
       if (!mounted) return;
