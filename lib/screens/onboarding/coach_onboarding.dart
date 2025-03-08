@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:go_router/go_router.dart';
 import '../../state/onboarding_state.dart';
+
 
 class CoachOnboarding extends StatefulWidget {
   final String userId;
-  final OnboardingState onboardingState;  // Add this line
+  final OnboardingState onboardingState;
 
   const CoachOnboarding({super.key, required this.userId, required this.onboardingState,});
 
@@ -37,7 +39,6 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
     _userId = widget.userId;
     _onboardingState = widget.onboardingState;
     _initializeFields();
-    debugPrint('CoachOnboarding initialized with userId: $_userId');
   } 
 
   void _initializeFields() async {
@@ -74,7 +75,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
             });
           }
         } catch (e) {
-          debugPrint('Error verifying team: $e');
+          AppLogger.error('Error verifying team');
           if (mounted) {
             setState(() {
               _isTeamValid = false;
@@ -98,7 +99,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
           .maybeSingle();
       return response != null;
     } catch (e) {
-      debugPrint('Error verifying team: $e');
+      AppLogger.error('Error verifying team');
       return false;
     }
   }
@@ -113,14 +114,11 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
       certificateUrl: _savedFileUrl,
     );
 
-    Navigator.pushReplacementNamed(
-      context,
-      '/onboarding',
-      arguments: {
-        'userId': _userId,
-        'onboardingState': updatedState,
-      },
-    );
+    // Use GoRouter instead of Navigator
+    context.go('/onboarding', extra: {
+      'userId': _userId,
+      'onboardingState': updatedState,
+    });
   }
   
   Future<void> _pickFile() async {
@@ -136,128 +134,132 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
         });
       }
     } catch (e) {
-      debugPrint('Error picking file: $e');
+      AppLogger.error('Error picking file');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('אירעה שגיאה בבחירת הקובץ. אנא נסה שוב.')),
+        );
+      }
     }
   }
 
   Future<void> _submitAndNavigate() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() {
-      _isLoading = true;
-    });
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
 
-    try {
-      final teamName = _teamNameController.text.trim();
-      final certificateNumber = _certificateNumberController.text.trim();
-      String? certificateUrl;
-      String? fileName;
+      try {
+        final teamName = _teamNameController.text.trim();
+        final certificateNumber = _certificateNumberController.text.trim();
+        String? certificateUrl;
+        String? fileName;
 
-      // Handle file upload if there's a new file
-      if (_selectedFile?.bytes != null) {
-        // Create a path that includes the user ID as a folder
-        fileName = '${_userId}/${_userId}_certificate.${_selectedFile!.extension}';
-        final fileBytes = _selectedFile!.bytes!;
+        // Handle file upload if there's a new file
+        if (_selectedFile?.bytes != null) {
+          // Create a path that includes the user ID as a folder
+          fileName = '${_userId}/${_userId}_certificate.${_selectedFile!.extension}';
+          final fileBytes = _selectedFile!.bytes!;
 
-        await Supabase.instance.client
-            .storage
-            .from('coach_certificate')
-            .uploadBinary(
-              fileName,
-              fileBytes,
-              fileOptions: const FileOptions(
-                cacheControl: '3600',
-                upsert: true,
-              ),
+          await Supabase.instance.client
+              .storage
+              .from('coach_certificate')
+              .uploadBinary(
+                fileName,
+                fileBytes,
+                fileOptions: const FileOptions(
+                  cacheControl: '3600',
+                  upsert: true,
+                ),
+              );
+
+          certificateUrl = Supabase.instance.client
+              .storage
+              .from('coach_certificate')
+              .getPublicUrl(fileName);
+        }
+
+        String? teamId;
+        // Only get team ID if a team name was provided
+        if (teamName.isNotEmpty) {
+          teamId = await _getTeamIdByName(teamName);
+          if (teamId == null) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
             );
+            setState(() {
+              _isLoading = false;
+            });
+            return;
+          }
+        }
 
-        certificateUrl = Supabase.instance.client
-            .storage
-            .from('coach_certificate')
-            .getPublicUrl(fileName);
-      }
+        if (!mounted) return;
 
-      String? teamId;
-      // Only get team ID if a team name was provided
-      if (teamName.isNotEmpty) {
-        teamId = await _getTeamIdByName(teamName);
-        if (teamId == null) {
-          if (!mounted) return;
+        // Update coach-specific fields directly in the users table
+        await Supabase.instance.client
+            .from('users')
+            .update({
+              'is_professional': _isProfessionalCoach,
+              'certificate_number': _isProfessionalCoach ? certificateNumber : null,
+              'certificate_url': certificateUrl ?? _savedFileUrl,
+            })
+            .eq('id', _userId);
+        
+        // Handle team association if a team was selected
+        if (teamId != null) {
+          try {
+            await Supabase.instance.client
+              .from('team_members')
+              .insert({
+                'user_id': _userId,
+                'team_id': teamId,
+                'role': 'coach',
+                'status': 'pending',
+                'created_at': DateTime.now().toIso8601String(),
+                'created_by': _userId
+              });
+          } catch (teamError) {
+            AppLogger.error('Error associating coach with team');
+            // Don't rethrow since this isn't critical to proceed
+          }
+        }
+
+        // Update state with all information including file data
+        final updatedState = _onboardingState.copyWith(
+          teamName: teamName,
+          isProfessionalCoach: _isProfessionalCoach,
+          certificateNumber: _isProfessionalCoach ? certificateNumber : null,
+          certificateFileName: fileName ?? _savedFileName,
+          certificateUrl: certificateUrl ?? _savedFileUrl,
+        );
+
+        if (mounted) {
+          context.go('/onboarding/favorites', extra: {
+            'userId': _userId,
+            'onboardingState': updatedState,
+          });
+        }
+      } catch (e) {
+        AppLogger.error('Error during coach onboarding');
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
+            const SnackBar(content: Text('אירעה שגיאה בעיבוד הבקשה. אנא נסה שוב.')),
           );
           setState(() {
             _isLoading = false;
           });
-          return;
         }
-      }
-
-      if (!mounted) return;
-
-      // Update coach-specific fields directly in the users table
-      await Supabase.instance.client
-          .from('users')
-          .update({
-            'is_professional': _isProfessionalCoach,
-            'certificate_number': _isProfessionalCoach ? certificateNumber : null,
-            'certificate_url': certificateUrl ?? _savedFileUrl,
-          })
-          .eq('id', _userId);
-      
-      // Handle team association if a team was selected
-      if (teamId != null) {
-        try {
-          await Supabase.instance.client
-            .from('team_members')
-            .insert({
-              'user_id': _userId,
-              'team_id': teamId,
-              'role': 'coach',
-              'status': 'pending',
-              'created_at': DateTime.now().toIso8601String(),
-              'created_by': _userId
-            });
-        } catch (teamError) {
-          AppLogger.error('Error associating coach with team', error: teamError);
-          // Don't rethrow since this isn't critical to proceed
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
         }
-      }
-
-      // Update state with all information including file data
-      final updatedState = _onboardingState.copyWith(
-        teamName: teamName,
-        isProfessionalCoach: _isProfessionalCoach,
-        certificateNumber: _isProfessionalCoach ? certificateNumber : null,
-        certificateFileName: fileName ?? _savedFileName,
-        certificateUrl: certificateUrl ?? _savedFileUrl,
-      );
-
-      if (mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/favorites',
-          arguments: {
-            'userId': _userId,
-            'onboardingState': updatedState,
-          },
-        );
-      }
-    } catch (e, stackTrace) {
-      AppLogger.error('Error during coach onboarding', error: e, stackTrace: stackTrace);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred: $e')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
   }
-}
 
   Future<bool> _checkUserExists(String userId) async {
     try {
@@ -283,14 +285,15 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
 
       return response['id'] as String?;
     } catch (e) {
-      debugPrint('Error fetching team ID: $e');
+      AppLogger.error('Error fetching team ID');
       return null;
     }
   }
 
- @override
+  @override
   Widget build(BuildContext context) {
     return PopScope(
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           _handleBack();
@@ -304,9 +307,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
             elevation: 0,
             leading: BackButton(
               color: Colors.black,
-              onPressed: () {
-                _handleBack();
-              },
+              onPressed: _handleBack,
             ),
           ),
           extendBodyBehindAppBar: true,
@@ -323,7 +324,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
                   margin: const EdgeInsets.all(18.0),
                   padding: const EdgeInsets.all(18.0),
                   decoration: BoxDecoration(
-                    color: const Color.fromRGBO(255, 255, 255, 0.9),
+                    color: Colors.white.withAlpha(230),
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: SingleChildScrollView(
@@ -351,24 +352,45 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
                               _buildCertificationTypeField(),
                               const SizedBox(height: 20),
                               ElevatedButton(
-                                onPressed: _submitAndNavigate,
-                                child: const Text('המשך'),
+                                onPressed: _isLoading ? null : _submitAndNavigate,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'המשך',
+                                      style: TextStyle(fontSize: 15, color: Colors.white),
+                                    ),
                               ),
                             ],
                           ),
                         ),
-                        if (_isLoading)
-                          Container(
-                            color: Colors.black54,
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
                       ],
                     ),
                   ),
                 ),
               ),
+              if (_isLoading)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withAlpha(77),
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -409,7 +431,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
                     final List<dynamic> data = response as List<dynamic>;
                     return data.map<String>((team) => team['name'] as String);
                   } catch (error) {
-                    debugPrint('Error fetching teams: $error');
+                    AppLogger.error('Error fetching teams');
                     return const Iterable<String>.empty();
                   }
                 },
@@ -609,5 +631,11 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
       ],
     );
   }
-}
 
+  @override
+  void dispose() {
+    _teamNameController.dispose();
+    _certificateNumberController.dispose();
+    super.dispose();
+  }
+}

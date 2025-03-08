@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -36,7 +37,6 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
     _userId = widget.userId;
     _onboardingState = widget.onboardingState;
     _initializeFields();
-    debugPrint('MentorOnboarding initialized with userId: $_userId');
   }
 
   void _initializeFields() {
@@ -54,14 +54,10 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
       communityName: _communityNameController.text.trim(),
     );
 
-    Navigator.pushReplacementNamed(
-      context,
-      '/onboarding',
-      arguments: {
-        'userId': _userId,
-        'onboardingState': updatedState,
-      },
-    );
+    context.go('/onboarding', extra: {
+      'userId': _userId,
+      'onboardingState': updatedState,
+    });
   }
 
   Future<String?> _getCommunityByName(String communityName) async {
@@ -75,7 +71,7 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
 
       return response['id'] as String?;
     } catch (e) {
-      debugPrint('Error fetching community ID: $e');
+      AppLogger.error('Error fetching community ID');
       return null;
     }
   }
@@ -133,20 +129,16 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
         );
 
         if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/onboarding/favorites',
-            arguments: {
-              'userId': _userId,
-              'onboardingState': updatedState,
-            },
-          );
+          context.go('/onboarding/favorites', extra: {
+            'userId': _userId,
+            'onboardingState': updatedState,
+          });
         }
-      } catch (e, stackTrace) {
-        AppLogger.error('Error during mentor onboarding', error: e, stackTrace: stackTrace);
+      } catch (e) {
+        AppLogger.error('Error during mentor onboarding');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('An error occurred: $e')),
+            const SnackBar(content: Text('אירעה שגיאה בעיבוד הבקשה. אנא נסה שוב.')),
           );
         }
       } finally {
@@ -162,6 +154,7 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           _handleBack();
@@ -175,9 +168,7 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
             elevation: 0,
             leading: BackButton(
               color: Colors.black,
-              onPressed: () {
-                _handleBack();
-              },
+              onPressed: _handleBack,
             ),
           ),
           extendBodyBehindAppBar: true,
@@ -194,7 +185,7 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
                   margin: const EdgeInsets.all(18.0),
                   padding: const EdgeInsets.all(18.0),
                   decoration: BoxDecoration(
-                    color: const Color.fromRGBO(255, 255, 255, 0.9),
+                    color: Colors.white.withAlpha(230),
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: SingleChildScrollView(
@@ -223,9 +214,26 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
                               const SizedBox(height: 20),
                               ElevatedButton(
                                 onPressed: _isLoading ? null : _submitAndNavigate,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
                                 child: _isLoading
-                                    ? const CircularProgressIndicator()
-                                    : const Text('המשך'),
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'המשך',
+                                      style: TextStyle(fontSize: 15, color: Colors.white),
+                                    ),
                               ),
                             ],
                           ),
@@ -236,10 +244,10 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
                 ),
               ),
               if (_isLoading)
-                const Positioned.fill(
-                  child: ColoredBox(
-                    color: Colors.black26,
-                    child: Center(
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withAlpha(77),
+                    child: const Center(
                       child: CircularProgressIndicator(),
                     ),
                   ),
@@ -290,138 +298,137 @@ class _MentorOnboardingState extends State<MentorOnboarding> {
   }
 
   Widget _buildCommunityNameField() {
-  if (!_isInitialized) {
-    return const Center(child: CircularProgressIndicator());
-  }
+    if (!_isInitialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'הקהילה שלך:',
-        style: TextStyle(fontSize: 15),
-      ),
-      const SizedBox(height: 10),
-      Autocomplete<String>(
-        initialValue: TextEditingValue(text: _communityNameController.text),
-        optionsBuilder: (TextEditingValue textEditingValue) async {
-          if (textEditingValue.text.isEmpty) {
-            return const Iterable<String>.empty();
-          }
-
-          try {
-            final response = await Supabase.instance.client
-                .from('communities')
-                .select('name')
-                .ilike('name', '%${textEditingValue.text}%')
-                .limit(10);
-
-            if (response == null) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'הקהילה שלך:',
+          style: TextStyle(fontSize: 15),
+        ),
+        const SizedBox(height: 10),
+        Autocomplete<String>(
+          initialValue: TextEditingValue(text: _communityNameController.text),
+          optionsBuilder: (TextEditingValue textEditingValue) async {
+            if (textEditingValue.text.isEmpty) {
               return const Iterable<String>.empty();
             }
 
-            if (response is! List) {
+            try {
+              final response = await Supabase.instance.client
+                  .from('communities')
+                  .select('name')
+                  .ilike('name', '%${textEditingValue.text}%')
+                  .limit(10);
+
+              if (response == null) {
+                return const Iterable<String>.empty();
+              }
+
+              if (response is! List) {
+                return const Iterable<String>.empty();
+              }
+
+              return response.map<String>((item) => item['name'].toString());
+
+            } catch (error) {
+              AppLogger.error('Error fetching communities');
               return const Iterable<String>.empty();
             }
+          },
+          displayStringForOption: (String option) => option,
+          onSelected: (String selection) {
+            setState(() {
+              _communityNameController.text = selection;
+              _isCommunityValid = true;
+            });
+          },
+          fieldViewBuilder: (
+            BuildContext context,
+            TextEditingController fieldController,
+            FocusNode fieldFocusNode,
+            VoidCallback onFieldSubmitted,
+          ) {
+            if (fieldController.text != _communityNameController.text) {
+              fieldController.text = _communityNameController.text;
+            }
 
-            return response.map<String>((item) => item['name'].toString());
-
-          } catch (error) {
-            debugPrint('Error fetching communities: $error');
-            return const Iterable<String>.empty();
-          }
-        },
-        displayStringForOption: (String option) => option,
-        onSelected: (String selection) {
-          setState(() {
-            _communityNameController.text = selection;
-            _isCommunityValid = true;
-          });
-        },
-        fieldViewBuilder: (
-          BuildContext context,
-          TextEditingController fieldController,
-          FocusNode fieldFocusNode,
-          VoidCallback onFieldSubmitted,
-        ) {
-          if (fieldController.text != _communityNameController.text) {
-            fieldController.text = _communityNameController.text;
-          }
-
-          return TextFormField(
-            controller: fieldController,
-            focusNode: fieldFocusNode,
-            decoration: const InputDecoration(
-              labelText: 'שם הקהילה',
-              border: OutlineInputBorder(),
-              filled: true,
-              fillColor: alternateThemeColor,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              isDense: true,
-            ),
-            onChanged: (value) {
-              _communityNameController.text = value;
-              if (value.isNotEmpty) {
-                setState(() {
-                  _isCommunityValid = false;
-                });
-              } else {
-                setState(() {
-                  _isCommunityValid = true;  // Empty value is valid
-                });
-              }
-            },
-            validator: (value) {
-              if (value?.isNotEmpty == true && !_isCommunityValid) {
-                return 'יש לבחור קהילה מהרשימה';
-              }
-              return null;
-            },
-          );
-        },
-        optionsViewBuilder: (
-          BuildContext context,
-          AutocompleteOnSelected<String> onSelected,
-          Iterable<String> options,
-        ) {
-          return Align(
-            alignment: Alignment.topRight,
-            child: Material(
-              elevation: 4.0,
-              child: SizedBox(
-                height: 200,
-                width: MediaQuery.of(context).size.width - 74,
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: options.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    final option = options.elementAt(index);
-                    return ListTile(
-                      title: Text(option),
-                      onTap: () {
-                        onSelected(option);
-                      },
-                    );
-                  },
+            return TextFormField(
+              controller: fieldController,
+              focusNode: fieldFocusNode,
+              decoration: const InputDecoration(
+                labelText: 'שם הקהילה',
+                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: alternateThemeColor,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                isDense: true,
+              ),
+              onChanged: (value) {
+                _communityNameController.text = value;
+                if (value.isNotEmpty) {
+                  setState(() {
+                    _isCommunityValid = false;
+                  });
+                } else {
+                  setState(() {
+                    _isCommunityValid = true;  // Empty value is valid
+                  });
+                }
+              },
+              validator: (value) {
+                if (value?.isNotEmpty == true && !_isCommunityValid) {
+                  return 'יש לבחור קהילה מהרשימה';
+                }
+                return null;
+              },
+            );
+          },
+          optionsViewBuilder: (
+            BuildContext context,
+            AutocompleteOnSelected<String> onSelected,
+            Iterable<String> options,
+          ) {
+            return Align(
+              alignment: Alignment.topRight,
+              child: Material(
+                elevation: 4.0,
+                child: SizedBox(
+                  height: 200,
+                  width: MediaQuery.of(context).size.width - 74,
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: options.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final option = options.elementAt(index);
+                      return ListTile(
+                        title: Text(option),
+                        onTap: () {
+                          onSelected(option);
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-          );
-        },
-      ),
-      const SizedBox(height: 8),
-      const Text(
-        'השאר/י ריק במידה ואין לך קהילה או שהקהילה לא נמצאת',
-        style: TextStyle(
-          fontSize: 11,
-          color: Colors.black,
-          fontStyle: FontStyle.italic,
+            );
+          },
         ),
-      ),
-    ],
-  );
-}
-
+        const SizedBox(height: 8),
+        const Text(
+          'השאר/י ריק במידה ואין לך קהילה או שהקהילה לא נמצאת',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.black,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
+  }
 
   @override
   void dispose() {

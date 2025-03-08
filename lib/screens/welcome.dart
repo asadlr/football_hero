@@ -1,23 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:go_router/go_router.dart';
 
 class Welcome extends StatelessWidget {
   const Welcome({super.key});
 
   void _navigateToSignup(BuildContext context) {
-    Navigator.pushNamed(context, '/signup');
+    context.go('/signup');
   }
 
   void _navigateToLogin(BuildContext context) {
-    Navigator.pushNamed(context, '/login');
+    context.go('/login');
   }
 
-  Future<void> _launchURL() async {
+  Future<void> _launchURL(BuildContext context) async {
     final url = Uri.parse('https://hoodhero.app/footballhero/he');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      throw 'Could not launch $url';
+    try {
+      if (await canLaunchUrl(url)) {
+        await launchUrl(url, mode: LaunchMode.externalApplication);
+      } else {
+        // Show a user-friendly error without exposing the URL
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('לא ניתן לפתוח את הקישור. נסה שוב מאוחר יותר.')),
+        );
+      }
+    } catch (e) {
+      // Handle exceptions gracefully without exposing details
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('אירעה שגיאה בפתיחת הקישור. נסה שוב מאוחר יותר.')),
+      );
     }
   }
 
@@ -70,7 +81,7 @@ class Welcome extends StatelessWidget {
                       borderRadius: BorderRadius.circular(30.0),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color.fromARGB(186, 10, 133, 204), // Adjusted for precision
+                          color: Colors.blue.withAlpha(186), // Fixed deprecated color usage
                           blurRadius: 10.0,
                           offset: const Offset(3, 4),
                         ),
@@ -108,7 +119,7 @@ class Welcome extends StatelessWidget {
                     decoration: BoxDecoration(
                       boxShadow: [
                         BoxShadow(
-                          color: const Color.fromARGB(230, 0, 0, 0), // Adjusted for precision
+                          color: Colors.black.withAlpha(230), // Fixed deprecated color usage
                           blurRadius: 10.0,
                           offset: const Offset(3, 4),
                         ),
@@ -141,7 +152,7 @@ class Welcome extends StatelessWidget {
 
                   // Info Link
                   GestureDetector(
-                    onTap: _launchURL,
+                    onTap: () => _launchURL(context), // Added context
                     child: const Padding(
                       padding: EdgeInsets.only(top: 20.0),
                       child: Text(

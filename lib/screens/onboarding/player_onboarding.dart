@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
@@ -39,7 +40,6 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
     _userId = widget.userId;
     _onboardingState = widget.onboardingState;
     _initializeFields();
-    debugPrint('PlayerOnboarding initialized with userId: $_userId');
   }
 
   void _initializeFields() {
@@ -78,16 +78,12 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
       ),
     );
 
-    Navigator.pushReplacementNamed(
-      context,
-      '/onboarding',
-      arguments: {
-        'userId': _userId,
-        'onboardingState': updatedState,
-      },
-    );
+    context.go('/onboarding', extra: {
+      'userId': _userId,
+      'onboardingState': updatedState,
+    });
   }
-  
+
   Future<String?> _getTeamIdByName(String teamName) async {
     try {
       final response = await Supabase.instance.client
@@ -99,152 +95,147 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
 
       return response['id'] as String?;
     } catch (e) {
-      debugPrint('Error fetching team ID: $e');
+      AppLogger.error('Error fetching team ID');
       return null;
     }
   }
   
-Future<void> _submitAndNavigate() async {
-  if (_formKey.currentState!.validate()) {
-    setState(() {
-      _isLoading = true;
-    });
-    final teamName = _teamNameController.text.trim();
-    final height = int.tryParse(_heightController.text.trim());
-    final weight = int.tryParse(_weightController.text.trim());
-    final positions = _selectedPositions.toList();
-    final strongLeg = _selectedLeg;
+  Future<void> _submitAndNavigate() async {
+    if (_formKey.currentState!.validate()) {
+      setState(() {
+        _isLoading = true;
+      });
+      final teamName = _teamNameController.text.trim();
+      final height = int.tryParse(_heightController.text.trim());
+      final weight = int.tryParse(_weightController.text.trim());
+      final positions = _selectedPositions.toList();
+      final strongLeg = _selectedLeg;
 
-    // Create the PlayerSkills object
-    final skills = PlayerSkills(
-      speed: _speed,
-      headers: _headers,
-      defending: _defending,
-      passing: _passing,
-      scoring: _scoring,
-      goalkeeping: _goalkeeping,
-    );
+      // Create the PlayerSkills object
+      final skills = PlayerSkills(
+        speed: _speed,
+        headers: _headers,
+        defending: _defending,
+        passing: _passing,
+        scoring: _scoring,
+        goalkeeping: _goalkeeping,
+      );
 
-    // Create updated state BEFORE navigation
-    final updatedState = _onboardingState.copyWith(
-      teamName: teamName,
-      height: height,
-      weight: weight,
-      positions: positions,
-      strongLeg: strongLeg,
-      skills: skills,
-    );
+      // Create updated state BEFORE navigation
+      final updatedState = _onboardingState.copyWith(
+        teamName: teamName,
+        height: height,
+        weight: weight,
+        positions: positions,
+        strongLeg: strongLeg,
+        skills: skills,
+      );
 
-    AppLogger.info('Player Onboarding form submitted');
-    AppLogger.info(
-      'Team Name: $teamName, Height: $height, Weight: $weight, Positions: $positions, Leg: $strongLeg, Skills: $skills',
-    );
+      AppLogger.info('Player Onboarding form submitted');
 
-    try {
-      String? teamId;
-      // Only get team ID if a team name was provided
-      if (teamName.isNotEmpty) {
-        teamId = await _getTeamIdByName(teamName);
-        if (teamId == null) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
-          );
-          setState(() {
-            _isLoading = false;
-          });
-          return; // Stop the submission process here
-        }
-      }
-
-      if (!mounted) return;
-
-      // Try to use existing players table first
       try {
-        await Supabase.instance.client
-          .from('players')
-          .insert({
-            'id': _userId,
+        String? teamId;
+        // Only get team ID if a team name was provided
+        if (teamName.isNotEmpty) {
+          teamId = await _getTeamIdByName(teamName);
+          if (teamId == null) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
+            );
+            setState(() {
+              _isLoading = false;
+            });
+            return; // Stop the submission process here
+          }
+        }
+
+        if (!mounted) return;
+
+        // Try to use existing players table first
+        try {
+          await Supabase.instance.client
+            .from('players')
+            .insert({
+              'id': _userId,
+              'height': height,
+              'weight': weight,
+              'positions': positions,
+              'strong_leg': strongLeg,
+              'skills': jsonEncode(skills.toMap()), // Encode the PlayerSkills object to a Map
+            });
+        } catch (playerInsertError) {
+          AppLogger.warning('Could not insert into players table, possibly removed. Storing player data in metadata');
+          
+          // If players table is gone, store the data as metadata in a JSON field in users table
+          final Map<String, dynamic> playerMetadata = {
             'height': height,
             'weight': weight,
             'positions': positions,
             'strong_leg': strongLeg,
-            'skills': jsonEncode(skills.toMap()), // Encode the PlayerSkills object to a Map
-          });
-      } catch (playerInsertError) {
-        AppLogger.warning('Could not insert into players table, possibly removed. Storing player data in metadata: $playerInsertError');
-        
-        // If players table is gone, store the data as metadata in a JSON field in users table
-        final Map<String, dynamic> playerMetadata = {
-          'height': height,
-          'weight': weight,
-          'positions': positions,
-          'strong_leg': strongLeg,
-          'skills': skills.toMap(),
-        };
-        
-        await Supabase.instance.client
-          .from('users')
-          .update({
-            'player_metadata': playerMetadata
-          })
-          .eq('id', _userId);
-      }
-
-      if (teamId != null) {
-        try {
-          // Insert using composite key approach
+            'skills': skills.toMap(),
+          };
+          
           await Supabase.instance.client
-            .from('team_members')
-            .insert({
-              'user_id': _userId,
-              'team_id': teamId,
-              'role': 'player',
-              'status': 'pending'
-            });
-        } catch (teamMemberError) {
-          AppLogger.error('Error adding user to team', error: teamMemberError);
-          // Don't rethrow, since joining a team is not critical to continue
+            .from('users')
+            .update({
+              'player_metadata': playerMetadata
+            })
+            .eq('id', _userId);
         }
-      }
-      
-      if (mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/favorites',
-          arguments: {
+
+        if (teamId != null) {
+          try {
+            // Insert using composite key approach
+            await Supabase.instance.client
+              .from('team_members')
+              .insert({
+                'user_id': _userId,
+                'team_id': teamId,
+                'role': 'player',
+                'status': 'pending'
+              });
+          } catch (teamMemberError) {
+            AppLogger.error('Error adding user to team');
+            // Don't rethrow, since joining a team is not critical to continue
+          }
+        }
+        
+        if (mounted) {
+          context.go('/onboarding/favorites', extra: {
             'userId': _userId,
             'onboardingState': updatedState,
-          },
+          });
+        }
+      } catch (e) {
+        AppLogger.error('Error during player onboarding');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('אירעה שגיאה בעת שמירת הנתונים. אנא נסה שוב.')),
         );
-      }
-    } catch (e, stackTrace) {
-      AppLogger.error('Error during player onboarding', error: e, stackTrace: stackTrace);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred: $e')),
-      );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });     
+      } finally {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });     
+        }
       }
     }
   }
-}
+
   @override
   Widget build(BuildContext context) {
-  return PopScope(
-    // Use onPopInvokedWithResult instead of onPopInvoked
-    onPopInvokedWithResult: (didPop, result) {
-      if (!didPop) {
-        _handleBack();
-      }
-    },
-    child: Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
+    return PopScope(
+      // Use onPopInvokedWithResult instead of onPopInvoked
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          _handleBack();
+        }
+      },
+      child: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
@@ -267,7 +258,7 @@ Future<void> _submitAndNavigate() async {
                   margin: const EdgeInsets.all(18.0),
                   padding: const EdgeInsets.all(18.0),
                   decoration: BoxDecoration(
-                    color: const Color.fromRGBO(255, 255, 255, 0.9),
+                    color: Colors.white.withAlpha(230),
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: SingleChildScrollView(
@@ -301,20 +292,29 @@ Future<void> _submitAndNavigate() async {
                               _buildSkillsSliders(),
                               const SizedBox(height: 10),
                               ElevatedButton(
-                                onPressed: _submitAndNavigate,
-                                child: const Text(
-                                  'המשך',
-                                  style: TextStyle(fontSize: 15),
+                                onPressed: _isLoading ? null : _submitAndNavigate,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
                                 ),
+                                child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'המשך',
+                                      style: TextStyle(fontSize: 15, color: Colors.white),
+                                    ),
                               ),
                             ],
-                          ),
-                        ),
-                      if (_isLoading)
-                        Container(
-                          color: Colors.black54,
-                          child: const Center(
-                            child: CircularProgressIndicator(),
                           ),
                         ),
                       ],
@@ -322,6 +322,15 @@ Future<void> _submitAndNavigate() async {
                   ),
                 ),
               ),
+              if (_isLoading)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withAlpha(77),
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -329,163 +338,161 @@ Future<void> _submitAndNavigate() async {
     );
   }
   
-Widget _buildTeamNameField() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'הקבוצה שלך: (אופציונלי)',
-        style: TextStyle(fontSize: 15),
-      ),
-      const SizedBox(height: 10),
-      Row(
-        children: [
-          Expanded(
-            child: Autocomplete<String>(
-              optionsBuilder: (TextEditingValue textEditingValue) async {
-                if (textEditingValue.text.isEmpty) {
-                  return const Iterable<String>.empty();
-                }
+  Widget _buildTeamNameField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'הקבוצה שלך: (אופציונלי)',
+          style: TextStyle(fontSize: 15),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: Autocomplete<String>(
+                optionsBuilder: (TextEditingValue textEditingValue) async {
+                  if (textEditingValue.text.isEmpty) {
+                    return const Iterable<String>.empty();
+                  }
 
-                try {
-                  // Now this should work with your new RLS policy
-                  final response = await Supabase.instance.client
-                      .from('teams')
-                      .select('name')
-                      .ilike('name', '%${textEditingValue.text}%')
-                      .limit(10);
+                  try {
+                    final response = await Supabase.instance.client
+                        .from('teams')
+                        .select('name')
+                        .ilike('name', '%${textEditingValue.text}%')
+                        .limit(10);
 
-                  final List<dynamic> data = response as List<dynamic>;
-                  return data.map<String>((team) => team['name'] as String);
-                } catch (error) {
-                  debugPrint('Error fetching teams: $error');
-                  return const Iterable<String>.empty();
-                }
-              },
-              displayStringForOption: (String option) => option,
-              onSelected: (String selection) {
-                setState(() {
-                  _teamNameController.text = selection;
-                  _isTeamValid = true;
-                });
-              },
-              fieldViewBuilder: (
-                BuildContext context,
-                TextEditingController fieldController,
-                FocusNode fieldFocusNode,
-                VoidCallback onFieldSubmitted,
-              ) {
-                // Keep a reference to the autocomplete controller
-                // This allows us to sync it with _teamNameController
-                if (fieldController.text != _teamNameController.text) {
-                  fieldController.text = _teamNameController.text;
-                }
-                
-                return TextFormField(
-                  controller: fieldController,
-                  focusNode: fieldFocusNode,
-                  decoration: const InputDecoration(
-                    labelText: 'שם הקבוצה',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: alternateThemeColor,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    isDense: true,
-                  ),
-                  onChanged: (value) async {
-                    // Update our main controller
-                    _teamNameController.text = value;
-                    
-                    if (value.isEmpty) {
-                      setState(() {
-                        _isTeamValid = true; // Empty is valid for optional field
-                      });
-                      return;
-                    }
-                    
-                    // Only validate if the text has a reasonable length
-                    if (value.length >= 3) {
-                      try {
-                        // Check if team exists with exact name match
-                        final exactMatch = await Supabase.instance.client
-                            .from('teams')
-                            .select('name')
-                            .eq('name', value)
-                            .limit(1);
-                        
+                    final List<dynamic> data = response as List<dynamic>;
+                    return data.map<String>((team) => team['name'] as String);
+                  } catch (error) {
+                    AppLogger.error('Error fetching teams');
+                    return const Iterable<String>.empty();
+                  }
+                },
+                displayStringForOption: (String option) => option,
+                onSelected: (String selection) {
+                  setState(() {
+                    _teamNameController.text = selection;
+                    _isTeamValid = true;
+                  });
+                },
+                fieldViewBuilder: (
+                  BuildContext context,
+                  TextEditingController fieldController,
+                  FocusNode fieldFocusNode,
+                  VoidCallback onFieldSubmitted,
+                ) {
+                  // Keep a reference to the autocomplete controller
+                  // This allows us to sync it with _teamNameController
+                  if (fieldController.text != _teamNameController.text) {
+                    fieldController.text = _teamNameController.text;
+                  }
+                  
+                  return TextFormField(
+                    controller: fieldController,
+                    focusNode: fieldFocusNode,
+                    decoration: const InputDecoration(
+                      labelText: 'שם הקבוצה',
+                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: alternateThemeColor,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      isDense: true,
+                    ),
+                    onChanged: (value) async {
+                      // Update our main controller
+                      _teamNameController.text = value;
+                      
+                      if (value.isEmpty) {
                         setState(() {
-                          // If we get any results back, the team exists
-                          _isTeamValid = exactMatch != null && exactMatch.isNotEmpty;
+                          _isTeamValid = true; // Empty is valid for optional field
                         });
-                      } catch (error) {
-                        debugPrint('Error validating team: $error');
+                        return;
+                      }
+                      
+                      // Only validate if the text has a reasonable length
+                      if (value.length >= 3) {
+                        try {
+                          // Check if team exists with exact name match
+                          final exactMatch = await Supabase.instance.client
+                              .from('teams')
+                              .select('name')
+                              .eq('name', value)
+                              .limit(1);
+                          
+                          setState(() {
+                            // If we get any results back, the team exists
+                            _isTeamValid = exactMatch != null && exactMatch.isNotEmpty;
+                          });
+                        } catch (error) {
+                          AppLogger.error('Error validating team');
+                          setState(() {
+                            _isTeamValid = false;
+                          });
+                        }
+                      } else {
                         setState(() {
                           _isTeamValid = false;
                         });
                       }
-                    } else {
-                      setState(() {
-                        _isTeamValid = false;
-                      });
-                    }
-                  },
-                  validator: (value) {
-                    if (value?.isEmpty == true) {
-                      return null; // Optional field can be empty
-                    }
-                    if (!_isTeamValid) {
-                      return 'יש לבחור קבוצה מהרשימה';
-                    }
-                    return null;
-                  },
-                );
-              },
-              optionsViewBuilder: (
-                BuildContext context,
-                AutocompleteOnSelected<String> onSelected,
-                Iterable<String> options,
-              ) {
-                return Align(
-                  alignment: Alignment.topRight,
-                  child: Material(
-                    elevation: 4.0,
-                    child: SizedBox(
-                      height: 200,
-                      width: MediaQuery.of(context).size.width - 74,
-                      child: ListView.builder(
-                        padding: EdgeInsets.zero,
-                        itemCount: options.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final option = options.elementAt(index);
-                          return ListTile(
-                            title: Text(option),
-                            onTap: () {
-                              onSelected(option);
-                            },
-                          );
-                        },
+                    },
+                    validator: (value) {
+                      if (value?.isEmpty == true) {
+                        return null; // Optional field can be empty
+                      }
+                      if (!_isTeamValid) {
+                        return 'יש לבחור קבוצה מהרשימה';
+                      }
+                      return null;
+                    },
+                  );
+                },
+                optionsViewBuilder: (
+                  BuildContext context,
+                  AutocompleteOnSelected<String> onSelected,
+                  Iterable<String> options,
+                ) {
+                  return Align(
+                    alignment: Alignment.topRight,
+                    child: Material(
+                      elevation: 4.0,
+                      child: SizedBox(
+                        height: 200,
+                        width: MediaQuery.of(context).size.width - 74,
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final option = options.elementAt(index);
+                            return ListTile(
+                              title: Text(option),
+                              onTap: () {
+                                onSelected(option);
+                              },
+                            );
+                          },
+                        ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 8), // Add some spacing
-      const Text(
-        'השאר/י  ריק במידה ואין לך קבוצה או שהקבוצה לא נמצאת',
-        style: TextStyle(
-          fontSize: 11,
-          color: Colors.black,
-          fontStyle: FontStyle.italic,
+          ],
         ),
-      ),
-    ],
-  );
-}
-
+        const SizedBox(height: 8),
+        const Text(
+          'השאר/י  ריק במידה ואין לך קבוצה או שהקבוצה לא נמצאת',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.black,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _buildPositionSelection() {
     const positions = [
@@ -612,18 +619,18 @@ Widget _buildTeamNameField() {
 
   Widget _buildSlider(String label, double value, ValueChanged<double> onChanged) {
     return Column(
-      mainAxisSize: MainAxisSize.min, // Makes the column as compact as possible
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 4), // Small padding above label
+          padding: const EdgeInsets.only(top: 4),
           child: Text(
             label,
             style: const TextStyle(fontSize: 15),
           ),
         ),
         SizedBox(
-          height: 30, // Reduced height for the slider
+          height: 30,
           child: Slider(
             value: value,
             min: 0,
@@ -657,4 +664,11 @@ Widget _buildTeamNameField() {
     );
   }
   
+  @override
+  void dispose() {
+    _teamNameController.dispose();
+    _heightController.dispose();
+    _weightController.dispose();
+    super.dispose();
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 import '../../state/onboarding_state.dart';
 
 class CommunityManagerOnboarding extends StatefulWidget {
@@ -35,7 +36,6 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
     _userId = widget.userId;
     _onboardingState = widget.onboardingState;
     _initializeFields();
-    debugPrint('CommunityManagerOnboarding initialized with userId: $_userId');
   }
 
   void _initializeFields() {
@@ -55,66 +55,61 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
       communityName: _communityNameController.text.trim(),
     );
 
-    Navigator.pushReplacementNamed(
-      context,
-      '/onboarding',
-      arguments: {
-        'userId': _userId,
-        'onboardingState': updatedState,
-      },
-    );
+    context.go('/onboarding', extra: {
+      'userId': _userId,
+      'onboardingState': updatedState,
+    });
   }
-// Add these methods inside the _CommunityManagerOnboardingState class
 
-Future<String?> _getCommunityIdForTeam(String teamId) async {
-  try {
-    final response = await Supabase.instance.client
-        .from('community_teams')
-        .select('community_id')
-        .eq('team_id', teamId)
-        .limit(1)
-        .single();
-    
-    return response['community_id'] as String?;
-  } catch (e) {
-    debugPrint('Error getting community ID for team: $e');
-    return null;
+  Future<String?> _getCommunityIdForTeam(String teamId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('community_teams')
+          .select('community_id')
+          .eq('team_id', teamId)
+          .limit(1)
+          .single();
+      
+      return response['community_id'] as String?;
+    } catch (e) {
+      AppLogger.error('Error getting community ID for team');
+      return null;
+    }
   }
-}
 
-Future<String> _createNewCommunity(String teamName) async {
-  try {
-    final response = await Supabase.instance.client
-        .from('communities')
-        .insert({
-          'name': teamName,
-          'created_at': DateTime.now().toIso8601String(),
-          'status': 'pending'
-        })
-        .select()
-        .single();
-    
-    return response['id'] as String;
-  } catch (e) {
-    AppLogger.error('Error creating new community', error: e);
-    throw Exception('Failed to create new community: $e');
+  Future<String> _createNewCommunity(String teamName) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('communities')
+          .insert({
+            'name': teamName,
+            'created_at': DateTime.now().toIso8601String(),
+            'status': 'pending'
+          })
+          .select()
+          .single();
+      
+      return response['id'] as String;
+    } catch (e) {
+      AppLogger.error('Error creating new community');
+      throw Exception('Failed to create new community');
+    }
   }
-}
 
-Future<void> _associateTeamWithCommunity(String teamId, String communityId) async {
-  try {
-    await Supabase.instance.client
-        .from('community_teams')
-        .insert({
-          'team_id': teamId,
-          'community_id': communityId,
-          'created_at': DateTime.now().toIso8601String()
-        });
-  } catch (e) {
-    AppLogger.error('Error associating team with community', error: e);
-    throw Exception('Failed to associate team with community: $e');
+  Future<void> _associateTeamWithCommunity(String teamId, String communityId) async {
+    try {
+      await Supabase.instance.client
+          .from('community_teams')
+          .insert({
+            'team_id': teamId,
+            'community_id': communityId,
+            'created_at': DateTime.now().toIso8601String()
+          });
+    } catch (e) {
+      AppLogger.error('Error associating team with community');
+      throw Exception('Failed to associate team with community');
+    }
   }
-}
 
   Future<void> _submitAndNavigate() async {
     if (_formKey.currentState!.validate()) {
@@ -175,7 +170,7 @@ Future<void> _associateTeamWithCommunity(String teamId, String communityId) asyn
                   'created_at': DateTime.now().toIso8601String()
                 });
           } catch (e) {
-            AppLogger.warning('Error creating community_teams relationship: $e');
+            AppLogger.warning('Error creating community_teams relationship');
             // Continue since this is not a critical error
           }
         }
@@ -187,21 +182,20 @@ Future<void> _associateTeamWithCommunity(String teamId, String communityId) asyn
         );
 
         if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/onboarding/favorites',
-            arguments: {
-              'userId': _userId,
-              'onboardingState': updatedState,
-            },
-          );
+          context.go('/onboarding/favorites', extra: {
+            'userId': _userId,
+            'onboardingState': updatedState,
+          });
         }
-      } catch (e, stackTrace) {
-        AppLogger.error('Error during community manager onboarding', error: e, stackTrace: stackTrace);
+      } catch (e) {
+        AppLogger.error('Error during community manager onboarding');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('An error occurred: $e')),
+            const SnackBar(content: Text('אירעה שגיאה בעיבוד הבקשה. אנא נסה שוב.')),
           );
+          setState(() {
+            _isLoading = false;
+          });
         }
       } finally {
         if (mounted) {
@@ -227,23 +221,25 @@ Future<void> _associateTeamWithCommunity(String teamId, String communityId) asyn
   }
 
   Future<String?> _getTeamIdByName(String teamName) async {
-  try {
-    final response = await Supabase.instance.client
-        .from('teams')
-        .select('id')
-        .eq('name', teamName)
-        .limit(1)
-        .single();
+    try {
+      final response = await Supabase.instance.client
+          .from('teams')
+          .select('id')
+          .eq('name', teamName)
+          .limit(1)
+          .single();
 
-    return response['id'] as String?;
-  } catch (e) {
-    debugPrint('Error fetching team ID: $e');
-    return null;
+      return response['id'] as String?;
+    } catch (e) {
+      AppLogger.error('Error fetching team ID');
+      return null;
+    }
   }
-}
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           _handleBack();
@@ -257,9 +253,7 @@ Future<void> _associateTeamWithCommunity(String teamId, String communityId) asyn
             elevation: 0,
             leading: BackButton(
               color: Colors.black,
-              onPressed: () {
-                _handleBack();
-              },
+              onPressed: _handleBack,
             ),
           ),
           extendBodyBehindAppBar: true,
@@ -276,7 +270,7 @@ Future<void> _associateTeamWithCommunity(String teamId, String communityId) asyn
                   margin: const EdgeInsets.all(18.0),
                   padding: const EdgeInsets.all(18.0),
                   decoration: BoxDecoration(
-                    color: const Color.fromRGBO(255, 255, 255, 0.9),
+                    color: Colors.white.withAlpha(230),
                     borderRadius: BorderRadius.circular(15),
                   ),
                   child: SingleChildScrollView(
@@ -305,9 +299,26 @@ Future<void> _associateTeamWithCommunity(String teamId, String communityId) asyn
                               const SizedBox(height: 20),
                               ElevatedButton(
                                 onPressed: _isLoading ? null : _submitAndNavigate,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.blue,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
                                 child: _isLoading
-                                    ? const CircularProgressIndicator()
-                                    : const Text('המשך'),
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'המשך',
+                                      style: TextStyle(fontSize: 15, color: Colors.white),
+                                    ),
                               ),
                             ],
                           ),
@@ -317,6 +328,15 @@ Future<void> _associateTeamWithCommunity(String teamId, String communityId) asyn
                   ),
                 ),
               ),
+              if (_isLoading)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withAlpha(77),
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -363,128 +383,135 @@ Future<void> _associateTeamWithCommunity(String teamId, String communityId) asyn
   }
 
   Widget _buildTeamNameField() {
-  if (!_isInitialized) {
-    return const Center(child: CircularProgressIndicator());
-  }
+    if (!_isInitialized) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      const Text(
-        'הקבוצה שלך: (אופציונלי)',
-        style: TextStyle(fontSize: 15),
-      ),
-      const SizedBox(height: 10),
-      Autocomplete<String>(
-        initialValue: TextEditingValue(text: _communityNameController.text),
-        optionsBuilder: (TextEditingValue textEditingValue) async {
-          if (textEditingValue.text.isEmpty) {
-            return const Iterable<String>.empty();
-          }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'הקבוצה שלך: (אופציונלי)',
+          style: TextStyle(fontSize: 15),
+        ),
+        const SizedBox(height: 10),
+        Autocomplete<String>(
+          initialValue: TextEditingValue(text: _communityNameController.text),
+          optionsBuilder: (TextEditingValue textEditingValue) async {
+            if (textEditingValue.text.isEmpty) {
+              return const Iterable<String>.empty();
+            }
 
-          try {
-            final response = await Supabase.instance.client
-                .from('teams')
-                .select('name')
-                .ilike('name', '%${textEditingValue.text}%')
-                .limit(10);
+            try {
+              final response = await Supabase.instance.client
+                  .from('teams')
+                  .select('name')
+                  .ilike('name', '%${textEditingValue.text}%')
+                  .limit(10);
 
-            final List<dynamic> data = response as List<dynamic>;
-            return data.map<String>((team) => team['name'] as String);
-          } catch (error) {
-            debugPrint('Error fetching teams: $error');
-            return const Iterable<String>.empty();
-          }
-        },
-        displayStringForOption: (String option) => option,
-        onSelected: (String selection) {
-          setState(() {
-            _communityNameController.text = selection;
-            _isCommunityValid = true;
-          });
-        },
-        fieldViewBuilder: (
-          BuildContext context,
-          TextEditingController fieldController,
-          FocusNode fieldFocusNode,
-          VoidCallback onFieldSubmitted,
-        ) {
-          // Sync the controllers
-          if (fieldController.text != _communityNameController.text) {
-            fieldController.text = _communityNameController.text;
-          }
+              final List<dynamic> data = response as List<dynamic>;
+              return data.map<String>((team) => team['name'] as String);
+            } catch (error) {
+              AppLogger.error('Error fetching teams');
+              return const Iterable<String>.empty();
+            }
+          },
+          displayStringForOption: (String option) => option,
+          onSelected: (String selection) {
+            setState(() {
+              _communityNameController.text = selection;
+              _isCommunityValid = true;
+            });
+          },
+          fieldViewBuilder: (
+            BuildContext context,
+            TextEditingController fieldController,
+            FocusNode fieldFocusNode,
+            VoidCallback onFieldSubmitted,
+          ) {
+            // Sync the controllers
+            if (fieldController.text != _communityNameController.text) {
+              fieldController.text = _communityNameController.text;
+            }
 
-          return TextFormField(
-            controller: fieldController,
-            focusNode: fieldFocusNode,
-            decoration: const InputDecoration(
-              labelText: 'שם הקבוצה',
-              border: OutlineInputBorder(),
-              filled: true,
-              fillColor: alternateThemeColor,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              isDense: true,
-            ),
-            onChanged: (value) {
-              _communityNameController.text = value;
-              if (value.isNotEmpty) {
-                setState(() {
-                  _isCommunityValid = false;
-                });
-              } else {
-                setState(() {
-                  _isCommunityValid = true;  // Empty value is valid
-                });
-              }
-            },
-            validator: (value) {
-              if (value?.isNotEmpty == true && !_isCommunityValid) {
-                return 'יש לבחור קבוצה מהרשימה';
-              }
-              return null;
-            },
-          );
-        },
-        optionsViewBuilder: (
-          BuildContext context,
-          AutocompleteOnSelected<String> onSelected,
-          Iterable<String> options,
-        ) {
-          return Align(
-            alignment: Alignment.topRight,
-            child: Material(
-              elevation: 4.0,
-              child: SizedBox(
-                height: 200,
-                width: MediaQuery.of(context).size.width - 74,
-                child: ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: options.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    final option = options.elementAt(index);
-                    return ListTile(
-                      title: Text(option),
-                      onTap: () {
-                        onSelected(option);
-                      },
-                    );
-                  },
+            return TextFormField(
+              controller: fieldController,
+              focusNode: fieldFocusNode,
+              decoration: const InputDecoration(
+                labelText: 'שם הקבוצה',
+                border: OutlineInputBorder(),
+                filled: true,
+                fillColor: alternateThemeColor,
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                isDense: true,
+              ),
+              onChanged: (value) {
+                _communityNameController.text = value;
+                if (value.isNotEmpty) {
+                  setState(() {
+                    _isCommunityValid = false;
+                  });
+                } else {
+                  setState(() {
+                    _isCommunityValid = true;  // Empty value is valid
+                  });
+                }
+              },
+              validator: (value) {
+                if (value?.isNotEmpty == true && !_isCommunityValid) {
+                  return 'יש לבחור קבוצה מהרשימה';
+                }
+                return null;
+              },
+            );
+          },
+          optionsViewBuilder: (
+            BuildContext context,
+            AutocompleteOnSelected<String> onSelected,
+            Iterable<String> options,
+          ) {
+            return Align(
+              alignment: Alignment.topRight,
+              child: Material(
+                elevation: 4.0,
+                child: SizedBox(
+                  height: 200,
+                  width: MediaQuery.of(context).size.width - 74,
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: options.length,
+                    itemBuilder: (BuildContext context, int index) {
+                      final option = options.elementAt(index);
+                      return ListTile(
+                        title: Text(option),
+                        onTap: () {
+                          onSelected(option);
+                        },
+                      );
+                    },
+                  ),
                 ),
               ),
-            ),
-          );
-        },
-      ),
-      const SizedBox(height: 8),
-      const Text(
-        'השאר/י ריק במידה ואין לך קבוצה או שהקבוצה לא נמצאת',
-        style: TextStyle(
-          fontSize: 11,
-          color: Colors.black,
-          fontStyle: FontStyle.italic,
+            );
+          },
         ),
-      ),
-    ],
-  );
-}
+        const SizedBox(height: 8),
+        const Text(
+          'השאר/י ריק במידה ואין לך קבוצה או שהקבוצה לא נמצאת',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.black,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      ],
+    );
   }
+
+  @override
+  void dispose() {
+    _idNumberController.dispose();
+    _communityNameController.dispose();
+    super.dispose();
+  }
+}

@@ -20,14 +20,15 @@ dependencies:
   logger: ^2.5.0
   sentry_flutter: ^8.11.2
   gotrue: ^2.11.1
-  file_picker: ^6.1.1  # For selecting files
+  file_picker: ^9.0.2  # For selecting files
   image_picker: ^1.0.7  # For image picking functionality
+  go_router: ^14.8.1  # ✅ The routing package we are using
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
   uses-material-design: true

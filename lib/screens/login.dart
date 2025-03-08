@@ -1,7 +1,6 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'forgot_password.dart';
-import 'home.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -13,8 +12,13 @@ class Login extends StatefulWidget {
 class _LoginState extends State<Login> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   Future<void> _login() async {
+    setState(() {
+      _isLoading = true;
+    });
+
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -23,6 +27,9 @@ class _LoginState extends State<Login> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('נא למלא את כל השדות')),
       );
+      setState(() {
+        _isLoading = false;
+      });
       return;
     }
 
@@ -34,24 +41,36 @@ class _LoginState extends State<Login> {
 
       if (response.user != null) {
         if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomeScreen(userId: response.user!.id),
-          ),
-        );
+          context.go('/home', extra: {'userId': response.user!.id});
       }
     } on AuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('שגיאה בכניסה: ${e.message}')),
+        SnackBar(content: Text(_getLocalizedErrorMessage(e.message))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('שגיאה בלתי צפויה: $e')),
+        const SnackBar(content: Text('שגיאה בהתחברות. אנא נסה שוב מאוחר יותר.')),
       );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  String _getLocalizedErrorMessage(String errorMessage) {
+    if (errorMessage.contains('Invalid login credentials')) {
+      return 'פרטי התחברות שגויים';
+    } else if (errorMessage.contains('Email not confirmed')) {
+      return 'דוא"ל לא מאומת. אנא בדוק את תיבת הדואר שלך';
+    } else if (errorMessage.contains('Too many requests')) {
+      return 'יותר מדי ניסיונות כניסה. אנא נסה שוב מאוחר יותר';
+    }
+    return 'שגיאה בכניסה למערכת. אנא נסה שוב';
   }
 
   @override
@@ -127,7 +146,7 @@ class _LoginState extends State<Login> {
                             ),
                             const SizedBox(height: 20.0),
                             ElevatedButton(
-                              onPressed: _login,
+                              onPressed: _isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 50.0,
@@ -138,24 +157,28 @@ class _LoginState extends State<Login> {
                                 ),
                                 backgroundColor: Colors.blue,
                               ),
-                              child: const Text(
-                                'כניסה',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w300,
-                                  color: Colors.white,
-                                  fontFamily: 'RubikDirt',
+                              child: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  )
+                                : const Text(
+                                  'כניסה',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w300,
+                                    color: Colors.white,
+                                    fontFamily: 'RubikDirt',
+                                  ),
                                 ),
-                              ),
                             ),
                             const SizedBox(height: 10.0),
                             GestureDetector(
-                              onTap: () => Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ForgotPassword(),
-                                ),
-                              ),
+                              onTap: () => context.push('/forgot-password'),
                               child: const Text(
                                 'שכחת סיסמה?',
                                 textAlign: TextAlign.center,
@@ -174,9 +197,25 @@ class _LoginState extends State<Login> {
                 ),
               ),
             ),
+            if (_isLoading)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.3),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
+  }
+  
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 }

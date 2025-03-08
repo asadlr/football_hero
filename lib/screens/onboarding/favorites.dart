@@ -1,3 +1,4 @@
+import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../logger/logger.dart';
@@ -23,6 +24,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
   List<String> searchResults1 = [];
   List<String> searchResults2 = [];
   List<String> searchResults3 = [];
+  bool _isLoading = false;
 
   void _handleBack() {
     // Get the role from onboardingState
@@ -36,65 +38,27 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     // Navigate back based on role
     switch (role) {
       case 'player':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/player',
-          arguments: {
-            'userId': widget.userId,
-            'onboardingState': widget.onboardingState,
-          },
-        );
+        context.go('/onboarding/player', extra: args);
       case 'parent':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/parent',
-          arguments: {
-            'userId': widget.userId,
-            'onboardingState': widget.onboardingState,
-          },
-        );
+        context.go('/onboarding/parent', extra: args);
       case 'coach':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/coach',
-          arguments: {
-            'userId': widget.userId,
-            'onboardingState': widget.onboardingState,
-          },
-        );
+        context.go('/onboarding/coach', extra: args);
       case 'mentor':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/mentor',
-          arguments: {
-            'userId': widget.userId,
-            'onboardingState': widget.onboardingState,
-          },
-        );
-      case 'community':
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding/community',
-          arguments: {
-            'userId': widget.userId,
-            'onboardingState': widget.onboardingState,
-          },
-        );
+        context.go('/onboarding/mentor', extra: args);
+      case 'community_manager':
+        context.go('/onboarding/community', extra: args);
       default:
         // If role is not set, go back to main onboarding
-        Navigator.pushReplacementNamed(
-          context,
-          '/onboarding',
-          arguments: {
-            'userId': widget.userId,
-            'onboardingState': widget.onboardingState,
-          },
-        );
+        context.go('/onboarding', extra: args);
     }
   }
-
+    
   Future<void> _saveFavorites() async {
-    if (!mounted) return; // Ensure the widget is still mounted
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       // Remove any duplicates from favoriteClubs
@@ -118,7 +82,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
             'club_id': clubResponse['id'],
           });
         } catch (e) {
-          AppLogger.warning('Could not find club: $clubName, error: $e');
+          AppLogger.warning('Could not find club');
           // Continue with the next club
         }
       }
@@ -136,53 +100,64 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       // Use a post-frame callback to ensure the navigation context is valid
       if (mounted) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HomeScreen(userId: widget.userId),
-            ),
-          );
+          context.go('/home', extra: {'userId': widget.userId});
         });
       }
     } catch (e) {
-      if (mounted) { // Ensure the widget is still mounted before using context
-        AppLogger.error('Error saving favorite clubs', error: e);
+      if (mounted) {
+        AppLogger.error('Error saving favorite clubs');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('שגיאה בשמירת קבוצות אהובות: $e')),
+          const SnackBar(content: Text('שגיאה בשמירת קבוצות אהובות. אנא נסה שוב.')),
         );
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
   
   Future<void> _searchClubs(String query, int searchFieldIndex) async {
-    if (!mounted) return; // Ensure the widget is still mounted
-    final currentContext = context;
+    if (!mounted) return;
+    
+    if (query.trim().isEmpty) {
+      setState(() {
+        if (searchFieldIndex == 1) {
+          searchResults1 = [];
+        } else if (searchFieldIndex == 2) {
+          searchResults2 = [];
+        } else if (searchFieldIndex == 3) {
+          searchResults3 = [];
+        }
+      });
+      return;
+    }
 
     try {
       final response = await Supabase.instance.client
           .from('football_clubs')
           .select('id, name')
-          .ilike('name', '%$query%');
+          .ilike('name', '%$query%')
+          .limit(10); // Adding a limit for better performance
 
       List<String> results = response.map((club) => club['name'].toString()).toList();
 
-      setState(() {
-        if (searchFieldIndex == 1) {
-          searchResults1 = results;
-        } else if (searchFieldIndex == 2) {
-          searchResults2 = results;
-        } else if (searchFieldIndex == 3) {
-          searchResults3 = results;
-        }
-      });
+      if (mounted) {
+        setState(() {
+          if (searchFieldIndex == 1) {
+            searchResults1 = results;
+          } else if (searchFieldIndex == 2) {
+            searchResults2 = results;
+          } else if (searchFieldIndex == 3) {
+            searchResults3 = results;
+          }
+        });
+      }
     } catch (e) {
       if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          AppLogger.error('Error searching for clubs', error: e);
-          ScaffoldMessenger.of(currentContext).showSnackBar(
-            SnackBar(content: Text('שגיאה בחיפוש מועדונים: $e')),
-          );
-        });
+        AppLogger.error('Error searching for clubs');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('שגיאה בחיפוש מועדונים. אנא נסה שוב.')),
+        );
       }
     }
   }
@@ -195,36 +170,73 @@ class FavoritesScreenState extends State<FavoritesScreen> {
           decoration: const InputDecoration(
             labelText: 'חפש מועדון כדורגל',
             prefixIcon: Icon(Icons.search),
+            border: OutlineInputBorder(),
           ),
           onChanged: (value) => _searchClubs(value, searchFieldIndex),
         ),
         const SizedBox(height: 10.0),
-        ListView(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          children: searchResults.map((clubName) {
-            return ListTile(
-              title: Text(clubName),
-              trailing: IconButton(
-                icon: Icon(
-                  favoriteClubs.contains(clubName)
-                      ? Icons.favorite
-                      : Icons.favorite_border,
-                  color: favoriteClubs.contains(clubName) ? Colors.red : null,
+        if (searchResults.isNotEmpty)
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade300),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: ListView(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              children: searchResults.map((clubName) {
+                return ListTile(
+                  title: Text(clubName),
+                  trailing: IconButton(
+                    icon: Icon(
+                      favoriteClubs.contains(clubName)
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color: favoriteClubs.contains(clubName) ? Colors.red : null,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        if (favoriteClubs.contains(clubName)) {
+                          favoriteClubs.remove(clubName);
+                        } else {
+                          favoriteClubs.add(clubName);
+                        }
+                      });
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        if (favoriteClubs.isNotEmpty && searchFieldIndex == 1) // Show selected clubs once
+          Padding(
+            padding: const EdgeInsets.only(top: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'הקבוצות שבחרת:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
-                onPressed: () {
-                  setState(() {
-                    if (favoriteClubs.contains(clubName)) {
-                      favoriteClubs.remove(clubName);
-                    } else {
-                      favoriteClubs.add(clubName);
-                    }
-                  });
-                },
-              ),
-            );
-          }).toList(),
-        ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: favoriteClubs.map((club) => Chip(
+                    label: Text(club),
+                    deleteIcon: const Icon(Icons.close, size: 16),
+                    onDeleted: () {
+                      setState(() {
+                        favoriteClubs.remove(club);
+                      });
+                    },
+                  )).toList(),
+                ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -232,7 +244,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      // Use onPopInvokedWithResult instead of onPopInvoked
+      canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
           _handleBack();
@@ -246,9 +258,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
             elevation: 0,
             leading: BackButton(
               color: Colors.black,
-              onPressed: () {
-                _handleBack();
-              },
+              onPressed: _handleBack,
             ),
           ),
           extendBodyBehindAppBar: true,
@@ -265,7 +275,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                 child: SingleChildScrollView(
                   child: Card(
                     margin: const EdgeInsets.symmetric(horizontal: 20.0),
-                    color: const Color.fromRGBO(255, 255, 255, 0.9),
+                    color: Colors.white.withAlpha(230),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15.0),
                     ),
@@ -278,7 +288,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                             'בחר את הקבוצות האהובות עליך',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 28,
+                              fontSize: 24,
                               fontWeight: FontWeight.w300,
                               fontFamily: 'RubikDirt',
                             ),
@@ -291,10 +301,9 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                           _buildSearchField(3, searchResults3),
                           const SizedBox(height: 20.0),
                           ElevatedButton(
-                            onPressed: _saveFavorites,
+                            onPressed: _isLoading ? null : _saveFavorites,
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 50.0,
                                 vertical: 15.0,
                               ),
                               shape: RoundedRectangleBorder(
@@ -302,15 +311,25 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                               ),
                               backgroundColor: Colors.blue,
                             ),
-                            child: const Text(
-                              'סיום ההרשמה',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w300,
-                                fontStyle: FontStyle.italic,
-                                fontFamily: 'VarelaRound',
-                              ),
-                            ),
+                            child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  'סיום ההרשמה',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w300,
+                                    fontStyle: FontStyle.italic,
+                                    fontFamily: 'VarelaRound',
+                                    color: Colors.white,
+                                  ),
+                                ),
                           ),
                         ],
                       ),
@@ -318,11 +337,19 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                   ),
                 ),
               ),
+              if (_isLoading)
+                Positioned.fill(
+                  child: Container(
+                    color: Colors.black.withAlpha(77),
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
       ),
     );
   }
-  
 }
