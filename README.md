@@ -1,16 +1,27 @@
-I'll help you enhance your README.md file to make it more comprehensive and developer-friendly:
-
-```markdown
 # FootballHero
 
-FootballHero is a video-sharing platform built with Flutter and Supabase, designed for football players, coaches, and youth teams. The app follows a lean and efficient development approach, prioritizing essential features, video storage optimization, and cost-effective scalability.
+FootballHero is an innovative mobile application designed to revolutionize how football (soccer) players, coaches, parents, mentors, and community managers interact and develop within the sport. Built with Flutter and Supabase, the platform offers sophisticated video-sharing capabilities, team management tools, and role-based features tailored to the specific needs of each user type.
+
+![FootballHero App Screenshot](assets/images/app_screenshot.png)
+
+## Core Features
+
+- **Role-Based Experience**: Tailored interfaces for Players, Coaches, Parents, Mentors, and Community Managers
+- **Video Sharing Platform**: Easy upload, management, and sharing of football skills and training videos
+- **Team Management**: Comprehensive tools for team organization and player development
+- **Performance Tracking**: Statistics and metrics to monitor player progress
+- **Community Engagement**: News feeds and fan zone integration with professional football clubs
+- **Full RTL Support**: Complete Hebrew language interface with proper RTL layout
+- **Modern UI**: Vibrant, youthful design with gradient support and optimized user experience
 
 ## Development Framework
 
 ### Frontend
 
-- **Framework**: Flutter (>=3.5.0)
+- **Framework**: Flutter (>=3.7.0)
 - **Language**: Dart
+- **State Management**: Provider pattern
+- **UI/UX**: Custom component library with gradient support and RTL optimization
 - **Testing**:
   - Integration Testing: Flutter integration test package
   - Unit Testing: Mockito
@@ -19,8 +30,9 @@ FootballHero is a video-sharing platform built with Flutter and Supabase, design
 
 - **Platform**: Supabase
   - Authentication: Supabase Auth with email verification and password reset
-  - Database: PostgreSQL
+  - Database: PostgreSQL with 22-table schema
   - Storage: Supabase Storage for media files and coach certificates
+  - Security: Row Level Security (RLS) for data protection
 
 ### Additional Services
 
@@ -29,25 +41,57 @@ FootballHero is a video-sharing platform built with Flutter and Supabase, design
 - **Payment Processing**: Isracard/PayPlus integration
 - **Security Testing**: OWASP ZAP for CSRF & XSS detection
 
-## Features
+## Features By User Role
 
-- **User Roles**: Player, Parent, Coach, Community Manager, Mentor
-- **Authentication**: Email-based login with password reset functionality
-- **Deep Linking**: Support for password reset and app invitation flows
-- **Team Management**: Team registration and player association
-- **Favorites**: Ability to select and follow favorite football clubs
-- **Localization**: Full Hebrew (RTL) language support
+### Player Features
+- Performance metrics dashboard
+- Achievement tracking (challenges, stars, player card completion)
+- Team discovery and joining
+- Video sharing and skills showcasing
+- Activity feed with upcoming events
 
-## Version Control
+### Coach Features
+- Team management interface
+- Player performance analytics
+- Training session scheduling
+- Team statistics visualization
+- Coaching resources access
 
-- **Git Repository**: [https://github.com/yourusername/football_hero.git](https://github.com/yourusername/football_hero.git)
-- **Branching Strategy**: Structured branching strategy for feature development
+### Parent Features
+- Child activity monitoring
+- Multiple children management
+- Permission management
+- Event scheduling notifications
+- Payment tracking for team activities
+
+### Mentor Features
+- Mentee tracking dashboard
+- Session scheduling tools
+- Skill development tracking
+- Resources for player development
+- Direct communication with mentees
+
+### Community Manager Features
+- Community overview dashboard
+- Multi-team management
+- Member statistics and metrics
+- Event coordination across teams
+- Content moderation tools
+
+## UI/UX Design System
+
+The application features a vibrant, youthful design system with:
+
+- **Modern Color Palette**: Semi-transparent colors with gradient effects
+- **Card Components**: Consistent styling across different sections
+- **RTL Support**: Full Hebrew language support with proper layout
+- **Optimized Navigation**: Icon-based navigation with visual feedback
 
 ## Getting Started
 
 ### Prerequisites
 
-- Flutter SDK (>=3.5.0)
+- Flutter SDK (>=3.7.0)
 - Dart SDK
 - Supabase account and project
 - Android Studio or VS Code
@@ -127,16 +171,91 @@ The app supports deep linking for password reset and onboarding flows:
 
 ## Project Structure
 
-- `lib/` - Main application code
-  - `screens/` - UI screens for different parts of the app
-  - `state/` - State management
-  - `logger/` - Logging utilities
-  - `main.dart` - Entry point with routing configuration
+```
+football_hero/
+├── android/                  # Native Android implementation
+├── ios/                      # Native iOS implementation
+├── web/                      # Web-related files
+├── assets/                   # Static assets
+│   ├── images/               # Application images
+│   ├── fonts/                # Custom typography
+│   └── icon/                 # App iconography
+├── lib/                      # Core application code
+│   ├── main.dart             # Application entry point
+│   ├── localization/         # Localization support
+│   │   └── app_strings.dart  # Hebrew string resources
+│   ├── logger/               # Debugging utilities
+│   ├── models/               # Data structures
+│   ├── screens/              # User interface screens
+│   │   ├── home.dart         # Main home screen controller
+│   │   └── onboarding/       # Role-specific onboarding
+│   ├── state/                # State management
+│   ├── theme/                # Theme system
+│   │   └── app_colors.dart   # Color and gradient definitions
+│   └── widgets/              # Reusable components
+│       ├── common/           # Shared widgets
+│       └── home/             # Role-specific content
+├── test/                     # Testing resources
+└── pubspec.yaml              # Dependencies and configuration
+```
+
+## UI Components
+
+The app includes several reusable UI components:
+
+- **CustomCard**: Base card component with gradient support
+- **AchievementBox**: Compact metrics display
+- **TeamCard**: Team information display
+- **ActivityItem**: Event listing with type-based styling
+- **FanClubNewsCard**: News feed component for football clubs
+- **UpcomingEventsCard**: Calendar events display
 
 ## Security Considerations
 
+- Row Level Security (RLS) implemented in Supabase
 - All error logs are sanitized to prevent leaking sensitive information
 - User IDs and personal information are not exposed in logs
 - Password reset tokens are handled securely
 - Form validation is robust to prevent injection attacks
 
+## RTL Support
+
+The app features comprehensive RTL support for Hebrew language:
+
+- Global directionality control
+- Component-level RTL adaptation
+- Proper text alignment and padding
+- Consistent visual hierarchy in RTL context
+
+## Performance Optimization
+
+- Efficient API call batching
+- Strategic caching mechanisms
+- Lazy loading for media-heavy screens
+- Memory usage optimization
+- Minimal widget rebuilds
+
+## Screenshots
+
+### Player Dashboard
+![Player Dashboard](assets/images/player_dashboard.png)
+
+### Team Management
+![Team Management](assets/images/team_management.png)
+
+### Achievement Tracking
+![Achievement Tracking](assets/images/achievements.png)
+
+## Contributing
+
+We welcome contributions to the FootballHero project. Please read our [CONTRIBUTING.md](CONTRIBUTING.md) file for guidelines on how to contribute.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## Acknowledgments
+
+- The Flutter team for their amazing framework
+- Supabase for providing a powerful backend solution
+- All the football enthusiasts who provided feedback during development
