@@ -396,82 +396,95 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTopNavigationBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        textDirection: TextDirection.rtl, // RTL support
-        children: [
-          // Profile Icon moved to left corner (right in RTL) - WITHOUT the colored background
-          GestureDetector(
-            onTap: () {
-              if (_userRole != null) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => ProfileScreen(
-                      userId: widget.userId, 
-                      userRole: _convertToProfileUserRole(_userRole!),
-                    ),
+Widget _buildTopNavigationBar() {
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      textDirection: TextDirection.rtl, // RTL support
+      children: [
+        // Profile Icon (right side)
+        GestureDetector(
+          onTap: () {
+            if (_userRole != null) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => ProfileScreen(
+                    userId: widget.userId, 
+                    userRole: _convertToProfileUserRole(_userRole!),
                   ),
-                );
-              }
-            },
-            child: _profileImageUrl.isNotEmpty
-                ? ClipOval(
-                    child: Image.network(
-                      _profileImageUrl,
-                      width: 40,
-                      height: 40,
-                      fit: BoxFit.cover,
-                    ),
-                  )
-                : Container(
+                ),
+              );
+            }
+          },
+          child: _profileImageUrl.isNotEmpty
+              ? ClipOval(
+                  child: Image.network(
+                    _profileImageUrl,
                     width: 40,
                     height: 40,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.transparent, // Transparent background
-                    ),
-                    child: const Icon(
-                      Icons.person,
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                    fit: BoxFit.cover,
                   ),
-          ),
-          
-          // Notification and Message Icons (without backgrounds)
-          Row(
-            textDirection: TextDirection.rtl, // RTL support
-            children: [
-              IconButton(
-                icon: const Icon(
-                  Icons.notifications_none, 
-                  color: Colors.white,
-                  size: 24,
+                )
+              : Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.transparent,
+                  ),
+                  child: const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                 ),
-                onPressed: _navigateToNotifications,
-                padding: EdgeInsets.zero,
+        ),
+
+        // Spacer to push logo to the center
+        Spacer(flex: 2),
+
+        // Centered Logo
+        Image.asset(
+          'assets/images/logoS.webp',
+          width: 100,
+          height: 80,
+          fit: BoxFit.contain,
+        ),
+
+        // Spacer to push logo to the center
+        Spacer(flex: 2),
+
+        // Notification and Message Icons (left side)
+        Row(
+          textDirection: TextDirection.rtl,
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.notifications_none, 
+                color: Colors.white,
+                size: 24,
               ),
-              
-              const SizedBox(width: 8),
-              
-              IconButton(
-                icon: const Icon(
-                  Icons.mail_outline, 
-                  color: Colors.white,
-                  size: 24,
-                ),
-                onPressed: _navigateToMessages,
-                padding: EdgeInsets.zero,
+              onPressed: _navigateToNotifications,
+              padding: EdgeInsets.zero,
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(
+                Icons.mail_outline, 
+                color: Colors.white,
+                size: 24,
               ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+              onPressed: _navigateToMessages,
+              padding: EdgeInsets.zero,
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildRoleSpecificContent() {
     // Return the appropriate content widget based on user role

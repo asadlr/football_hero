@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import '../common/upcoming_activities.dart';
 import '../common/fan_zone_preview.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
 
 class CommunityManagerHomeContent extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -16,21 +18,21 @@ class CommunityManagerHomeContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingDouble),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Community Overview Card
-            _buildCommunityOverviewCard(),
+            _buildCommunityOverviewCard(context),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Community Management Tools
-            _buildManagementToolsSection(),
+            _buildManagementToolsSection(context),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Upcoming Events
             UpcomingActivitiesSection(
@@ -40,7 +42,7 @@ class CommunityManagerHomeContent extends StatelessWidget {
               },
             ),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Fan Zone Preview
             FanZonePreview(
@@ -49,34 +51,35 @@ class CommunityManagerHomeContent extends StatelessWidget {
               },
             ),
             
-            const SizedBox(height: 30),
+            SizedBox(height: AppTheme.spacingTriple),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCommunityOverviewCard() {
+  Widget _buildCommunityOverviewCard(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    // Use communityColor for consistent community role styling
+    final communityColor = AppColors.communityColor;
+    
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Community Dashboard',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
-                  ),
+                  style: textTheme.headlineSmall,
                 ),
                 // Community badge
                 Container(
@@ -87,43 +90,42 @@ class CommunityManagerHomeContent extends StatelessWidget {
                   ),
                   child: Text(
                     userData['community_name'] ?? 'Community',
-                    style: const TextStyle(
+                    style: textTheme.labelSmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             // Community Stats Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildStatBox(
+                  context,
                   'Total Members', 
                   '${userData['member_count'] ?? 0}',
-                  const Color(0x1A16A085),
                   const Color(0xFF16A085),
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: AppTheme.spacingDouble),
                 _buildStatBox(
+                  context,
                   'Teams', 
                   '${userData['team_count'] ?? 0}',
-                  const Color(0x1A3498DB),
-                  const Color(0xFF2980B9),
+                  AppColors.primaryBlue,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: AppTheme.spacingDouble),
                 _buildStatBox(
+                  context,
                   'Events (Month)', 
                   '${userData['events_count'] ?? 0}',
-                  const Color(0x1AF39C12),
-                  const Color(0xFFD35400),
+                  AppColors.primaryAmber,
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: AppTheme.spacingDouble),
             // Engagement meter
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,29 +133,28 @@ class CommunityManagerHomeContent extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Community Engagement',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Color(0xFF7F8C8D),
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
                       ),
                     ),
                     Text(
                       '${userData['engagement_percentage'] ?? 65}%',
-                      style: const TextStyle(
+                      style: textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2C3E50),
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: AppTheme.spacing),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(5),
                   child: LinearProgressIndicator(
                     value: (userData['engagement_percentage'] ?? 65) / 100,
                     minHeight: 10,
-                    backgroundColor: const Color(0xFFBDC3C7),
+                    backgroundColor: AppColors.divider,
                     valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF16A085)),
                   ),
                 ),
@@ -165,12 +166,20 @@ class CommunityManagerHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildStatBox(String label, String value, Color bgColor, Color textColor) {
+  Widget _buildStatBox(
+    BuildContext context,
+    String label, 
+    String value, 
+    Color color,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: bgColor,
+          color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -178,18 +187,16 @@ class CommunityManagerHomeContent extends StatelessWidget {
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 14,
-                color: textColor,
+              style: textTheme.bodyMedium?.copyWith(
+                color: color,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: AppTheme.spacing),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 20,
+              style: textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2C3E50),
+                color: colorScheme.onSurface,
               ),
             ),
           ],
@@ -198,26 +205,24 @@ class CommunityManagerHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildManagementToolsSection() {
+  Widget _buildManagementToolsSection(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Community Management',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2C3E50),
-              ),
+              style: textTheme.headlineSmall,
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             // Management tools grid
             GridView.count(
               shrinkWrap: true,
@@ -228,39 +233,45 @@ class CommunityManagerHomeContent extends StatelessWidget {
               childAspectRatio: 0.9,
               children: [
                 _buildManagementTool(
+                  context,
                   'Events',
                   Icons.event,
-                  const Color(0x1AF39C12),
+                  AppColors.primaryAmber,
                   () {},
                 ),
                 _buildManagementTool(
+                  context,
                   'Members',
                   Icons.people,
-                  const Color(0x1A3498DB),
+                  AppColors.primaryBlue,
                   () {},
                 ),
                 _buildManagementTool(
+                  context,
                   'Teams',
                   Icons.group_work,
-                  const Color(0x1A16A085),
+                  const Color(0xFF16A085),
                   () {},
                 ),
                 _buildManagementTool(
+                  context,
                   'Announcements',
                   Icons.campaign,
-                  const Color(0x1AE74C3C),
+                  AppColors.primaryRed,
                   () {},
                 ),
                 _buildManagementTool(
+                  context,
                   'Facilities',
                   Icons.business,
-                  const Color(0x1A9B59B6),
+                  AppColors.mentorColor,
                   () {},
                 ),
                 _buildManagementTool(
+                  context,
                   'Reports',
                   Icons.bar_chart,
-                  const Color(0x1A7F8C8D),
+                  const Color(0xFF7F8C8D),
                   () {},
                 ),
               ],
@@ -271,28 +282,39 @@ class CommunityManagerHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildManagementTool(String label, IconData icon, Color bgColor, VoidCallback onTap) {
+  Widget _buildManagementTool(
+    BuildContext context,
+    String label, 
+    IconData icon, 
+    Color color, 
+    VoidCallback onTap,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: bgColor,
+          color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 32, color: const Color(0xFF2C3E50)),
-            const SizedBox(height: 8),
+            Icon(
+              icon, 
+              size: AppTheme.iconSize + 8, 
+              color: colorScheme.onSurface,
+            ),
+            SizedBox(height: AppTheme.spacing),
             Text(
               label,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2C3E50),
+              style: textTheme.titleSmall?.copyWith(
+                color: colorScheme.onSurface,
               ),
             ),
           ],

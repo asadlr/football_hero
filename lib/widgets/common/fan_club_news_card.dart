@@ -1,10 +1,10 @@
-
 // lib\widgets\common\fan_club_news_card.dart
 
 import 'package:flutter/material.dart';
 import 'news_item.dart';
 import 'custom_card.dart';
 import '../../localization/app_strings.dart';
+import '../../theme/app_theme.dart';
 
 class FanClubNewsCard extends StatelessWidget {
   final List<Map<String, dynamic>> news;
@@ -12,14 +12,17 @@ class FanClubNewsCard extends StatelessWidget {
   final Color? backgroundColor;
 
   const FanClubNewsCard({
-    Key? key,
+    super.key,
     required this.news,
     required this.clubName,
     this.backgroundColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return CustomCard(
       title: '${AppStrings.fanClub} - $clubName',
       height: 220,
@@ -28,9 +31,8 @@ class FanClubNewsCard extends StatelessWidget {
           ? Center(
               child: Text(
                 AppStrings.noNews,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.6),
                 ),
                 textDirection: TextDirection.rtl,
               ),

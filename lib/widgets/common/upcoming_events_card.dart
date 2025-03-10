@@ -4,19 +4,24 @@ import 'package:flutter/material.dart';
 import 'activity_item.dart';
 import 'custom_card.dart';
 import '../../localization/app_strings.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
 
 class UpcomingEventsCard extends StatelessWidget {
   final List<Map<String, dynamic>> events;
   final Color? backgroundColor;
 
   const UpcomingEventsCard({
-    Key? key,
+    super.key,
     required this.events,
     this.backgroundColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return CustomCard(
       title: AppStrings.upcomingEvents,
       height: 200,
@@ -25,9 +30,8 @@ class UpcomingEventsCard extends StatelessWidget {
           ? Center(
               child: Text(
                 AppStrings.noEvents,
-                style: TextStyle(
-                  color: Colors.grey[600],
-                  fontSize: 14,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.onSurface.withOpacity(0.6),
                 ),
                 textDirection: TextDirection.rtl,
               ),
@@ -41,7 +45,9 @@ class UpcomingEventsCard extends StatelessWidget {
                 return ActivityItem(
                   title: event['title'],
                   time: event['time'],
-                  color: event['type'] == 'training' ? Colors.blue : Colors.green,
+                  color: event['type'] == 'training' 
+                      ? AppColors.primaryBlue 
+                      : AppColors.primaryGreen,
                   onTap: () {
                     // Handle event tap
                   },
@@ -51,4 +57,3 @@ class UpcomingEventsCard extends StatelessWidget {
     );
   }
 }
-

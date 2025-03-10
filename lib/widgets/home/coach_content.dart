@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import '../common/upcoming_activities.dart';
 import '../common/fan_zone_preview.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
 
 class CoachHomeContent extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -16,21 +18,21 @@ class CoachHomeContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingDouble),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble + 4),
             
             // Coach Stats Card
-            _buildCoachStatsCard(),
+            _buildCoachStatsCard(context),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Team Management Section
-            _buildTeamManagementSection(),
+            _buildTeamManagementSection(context),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Upcoming Activities - Coach-specific
             UpcomingActivitiesSection(
@@ -40,7 +42,7 @@ class CoachHomeContent extends StatelessWidget {
               },
             ),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Fan Zone Preview - Common component
             FanZonePreview(
@@ -49,77 +51,75 @@ class CoachHomeContent extends StatelessWidget {
               },
             ),
             
-            const SizedBox(height: 30),
+            SizedBox(height: AppTheme.spacingTriple),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildCoachStatsCard() {
+  Widget _buildCoachStatsCard(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Coach Dashboard',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
-                  ),
+                  style: textTheme.headlineSmall,
                 ),
                 // License badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3498DB),
+                    color: AppColors.primaryBlue,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     'License: ${userData['license_number'] ?? 'N/A'}',
-                    style: const TextStyle(
+                    style: textTheme.labelSmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             // Team Stats Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildStatBox(
+                  context,
                   'Team Size', 
                   '${userData['team_size'] ?? 0}',
-                  const Color(0x1A3498DB),
-                  const Color(0xFF2980B9),
+                  AppColors.primaryBlue,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: AppTheme.spacingDouble),
                 _buildStatBox(
+                  context,
                   'Win Rate', 
                   '${userData['win_rate'] ?? 0}%',
-                  const Color(0x1A2ECC71),
-                  const Color(0xFF27AE60),
+                  AppColors.primaryGreen,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: AppTheme.spacingDouble),
                 _buildStatBox(
+                  context,
                   'Sessions', 
                   '${userData['training_sessions_month'] ?? 0}',
-                  const Color(0x1AE74C3C),
-                  const Color(0xFFC0392B),
+                  AppColors.primaryRed,
                 ),
               ],
             ),
@@ -129,12 +129,20 @@ class CoachHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildStatBox(String label, String value, Color bgColor, Color textColor) {
+  Widget _buildStatBox(
+    BuildContext context,
+    String label, 
+    String value, 
+    Color color,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: bgColor,
+          color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -142,18 +150,16 @@ class CoachHomeContent extends StatelessWidget {
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 14,
-                color: textColor,
+              style: textTheme.bodyMedium?.copyWith(
+                color: color,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: AppTheme.spacing),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 20,
+              style: textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2C3E50),
+                color: colorScheme.onSurface,
               ),
             ),
           ],
@@ -162,27 +168,25 @@ class CoachHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildTeamManagementSection() {
+  Widget _buildTeamManagementSection(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Team Management',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
-                  ),
+                  style: textTheme.headlineSmall,
                 ),
                 TextButton(
                   onPressed: () {
@@ -192,29 +196,32 @@ class CoachHomeContent extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 15),
+            SizedBox(height: AppTheme.spacing + 7),
             // Management Options
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildManagementOption(
+                  context,
                   'Players',
                   Icons.people,
-                  const Color(0x1A3498DB),
+                  AppColors.primaryBlue,
                   () {},
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: AppTheme.spacing + 4),
                 _buildManagementOption(
+                  context,
                   'Schedule',
                   Icons.calendar_month,
-                  const Color(0x1AF39C12),
+                  AppColors.primaryAmber,
                   () {},
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: AppTheme.spacing + 4),
                 _buildManagementOption(
+                  context,
                   'Stats',
                   Icons.bar_chart,
-                  const Color(0x1A2ECC71),
+                  AppColors.primaryGreen,
                   () {},
                 ),
               ],
@@ -225,7 +232,16 @@ class CoachHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildManagementOption(String title, IconData icon, Color bgColor, VoidCallback onTap) {
+  Widget _buildManagementOption(
+    BuildContext context,
+    String title, 
+    IconData icon, 
+    Color color, 
+    VoidCallback onTap
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -233,20 +249,22 @@ class CoachHomeContent extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            color: bgColor,
+            color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 28, color: const Color(0xFF2C3E50)),
-              const SizedBox(height: 8),
+              Icon(
+                icon, 
+                size: 28, 
+                color: colorScheme.onSurface,
+              ),
+              SizedBox(height: AppTheme.spacing),
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2C3E50),
+                style: textTheme.titleSmall?.copyWith(
+                  color: colorScheme.onSurface,
                 ),
               ),
             ],

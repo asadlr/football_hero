@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import '../common/upcoming_activities.dart';
 import '../common/fan_zone_preview.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
 
 class MentorHomeContent extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -16,21 +18,21 @@ class MentorHomeContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingDouble),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Mentor Info Card
-            _buildMentorInfoCard(),
+            _buildMentorInfoCard(context),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Mentees Section
-            _buildMenteesSection(),
+            _buildMenteesSection(context),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Upcoming Sessions
             UpcomingActivitiesSection(
@@ -40,7 +42,7 @@ class MentorHomeContent extends StatelessWidget {
               },
             ),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Fan Zone Preview
             FanZonePreview(
@@ -49,77 +51,77 @@ class MentorHomeContent extends StatelessWidget {
               },
             ),
             
-            const SizedBox(height: 30),
+            SizedBox(height: AppTheme.spacingTriple),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildMentorInfoCard() {
+  Widget _buildMentorInfoCard(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    // Use mentorColor for consistent mentor role styling
+    final mentorColor = AppColors.mentorColor;
+    
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Mentor Dashboard',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
-                  ),
+                  style: textTheme.headlineSmall,
                 ),
                 // Expertise badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF9B59B6),
+                    color: mentorColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     userData['expertise'] ?? 'Football',
-                    style: const TextStyle(
+                    style: textTheme.labelSmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             // Mentor Stats Row
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildStatBox(
+                  context,
                   'Active Mentees', 
                   '${userData['active_mentees'] ?? 0}',
-                  const Color(0x1A9B59B6),
-                  const Color(0xFF8E44AD),
+                  mentorColor,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: AppTheme.spacingDouble),
                 _buildStatBox(
+                  context,
                   'Hours This Month', 
                   '${userData['mentoring_hours_month'] ?? 0}',
-                  const Color(0x1A3498DB),
-                  const Color(0xFF2980B9),
+                  AppColors.primaryBlue,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: AppTheme.spacingDouble),
                 _buildStatBox(
+                  context,
                   'Rating', 
                   userData['rating'] != null ? '${userData['rating']}/5' : 'N/A',
-                  const Color(0x1AF39C12),
-                  const Color(0xFFD35400),
+                  AppColors.primaryAmber,
                 ),
               ],
             ),
@@ -129,12 +131,20 @@ class MentorHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildStatBox(String label, String value, Color bgColor, Color textColor) {
+  Widget _buildStatBox(
+    BuildContext context,
+    String label, 
+    String value, 
+    Color color,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: bgColor,
+          color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Column(
@@ -142,18 +152,16 @@ class MentorHomeContent extends StatelessWidget {
           children: [
             Text(
               label,
-              style: TextStyle(
-                fontSize: 14,
-                color: textColor,
+              style: textTheme.bodyMedium?.copyWith(
+                color: color,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: AppTheme.spacing),
             Text(
               value,
-              style: const TextStyle(
-                fontSize: 20,
+              style: textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Color(0xFF2C3E50),
+                color: colorScheme.onSurface,
               ),
             ),
           ],
@@ -162,29 +170,27 @@ class MentorHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildMenteesSection() {
+  Widget _buildMenteesSection(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
     final mentees = _getMenteesData();
     
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'My Mentees',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
-                  ),
+                  style: textTheme.headlineSmall,
                 ),
                 TextButton(
                   onPressed: () {
@@ -194,15 +200,22 @@ class MentorHomeContent extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: AppTheme.spacing + 2),
             if (mentees.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 10.0),
-                child: Center(child: Text('No active mentees')),
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: AppTheme.spacing + 2),
+                child: Center(
+                  child: Text(
+                    'No active mentees',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ),
               )
             else
               Column(
-                children: mentees.map((mentee) => _buildMenteeItem(mentee)).toList(),
+                children: mentees.map((mentee) => _buildMenteeItem(context, mentee)).toList(),
               ),
           ],
         ),
@@ -210,9 +223,12 @@ class MentorHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildMenteeItem(Map<String, dynamic> mentee) {
+  Widget _buildMenteeItem(BuildContext context, Map<String, dynamic> mentee) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
+      padding: EdgeInsets.only(bottom: AppTheme.spacing),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         leading: CircleAvatar(
@@ -223,17 +239,15 @@ class MentorHomeContent extends StatelessWidget {
           child: mentee['profile_image'] == null
               ? const Icon(Icons.person, color: Colors.white)
               : null,
-          backgroundColor: const Color(0xFF9B59B6),
+          backgroundColor: AppColors.mentorColor,
         ),
         title: Text(
           mentee['name'] ?? 'Unknown',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: textTheme.titleMedium,
         ),
         subtitle: Text(
           '${mentee['age'] ?? ''} • ${mentee['focus_area'] ?? 'General mentoring'}',
+          style: textTheme.bodySmall,
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,

@@ -1,7 +1,8 @@
 // lib\widgets\common\upcoming_activities.dart
 
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart'; // Add this import for AppColors
+import '../../theme/app_colors.dart';
+import '../../theme/app_theme.dart';
 
 class UpcomingActivitiesSection extends StatelessWidget {
   final List<Map<String, dynamic>> activities;
@@ -15,26 +16,25 @@ class UpcomingActivitiesSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Upcoming Activities',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
-                  ),
+                  style: textTheme.headlineSmall,
                 ),
                 if (onViewAll != null)
                   TextButton(
@@ -43,17 +43,22 @@ class UpcomingActivitiesSection extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: AppTheme.spacing + 2),
             if (activities.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20.0),
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: AppTheme.spacingDouble + 4),
                 child: Center(
-                  child: Text('No upcoming activities'),
+                  child: Text(
+                    'No upcoming activities',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
                 ),
               )
             else
               Column(
-                children: activities.map((activity) => _buildActivityItem(activity)).toList(),
+                children: activities.map((activity) => _buildActivityItem(activity, context)).toList(),
               ),
           ],
         ),
@@ -61,52 +66,63 @@ class UpcomingActivitiesSection extends StatelessWidget {
     );
   }
 
-  Widget _buildActivityItem(Map<String, dynamic> activity) {
-    // Define colors directly if AppColors is not available
-    final Color primaryBlue = const Color(0xFF2979FF);
-    final Color vibrantGreen = const Color(0xFF00E676);
+  Widget _buildActivityItem(Map<String, dynamic> activity, BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
     
-    // Determine gradient based on activity type
-    Gradient backgroundGradient;
+    // Determine color and icon based on activity type
     Color textColor;
     IconData iconData;
+    Gradient backgroundGradient;
 
     switch (activity['type']) {
       case 'training':
+        textColor = AppColors.primaryBlue;
+        iconData = Icons.fitness_center;
         backgroundGradient = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            primaryBlue.withOpacity(0.3),
-            primaryBlue.withOpacity(0.1),
+            Color.fromRGBO(AppColors.primaryBlue.red, AppColors.primaryBlue.green, AppColors.primaryBlue.blue, 0.3),
+            Color.fromRGBO(AppColors.primaryBlue.red, AppColors.primaryBlue.green, AppColors.primaryBlue.blue, 0.1),
           ],
         );
-        textColor = primaryBlue;
-        iconData = Icons.fitness_center;
         break;
       case 'match':
+        textColor = AppColors.primaryGreen;
+        iconData = Icons.sports_soccer;
         backgroundGradient = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            vibrantGreen.withOpacity(0.3),
-            vibrantGreen.withOpacity(0.1),
+            Color.fromRGBO(AppColors.primaryGreen.red, AppColors.primaryGreen.green, AppColors.primaryGreen.blue, 0.3),
+            Color.fromRGBO(AppColors.primaryGreen.red, AppColors.primaryGreen.green, AppColors.primaryGreen.blue, 0.1),
           ],
         );
-        textColor = vibrantGreen;
-        iconData = Icons.sports_soccer;
+        break;
+      case 'meeting':
+        textColor = AppColors.primaryAmber;
+        iconData = Icons.people;
+        backgroundGradient = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.fromRGBO(AppColors.primaryAmber.red, AppColors.primaryAmber.green, AppColors.primaryAmber.blue, 0.3),
+            Color.fromRGBO(AppColors.primaryAmber.red, AppColors.primaryAmber.green, AppColors.primaryAmber.blue, 0.1),
+          ],
+        );
         break;
       default:
+        textColor = Colors.grey;
+        iconData = Icons.event;
         backgroundGradient = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.grey.withOpacity(0.3),
-            Colors.grey.withOpacity(0.1),
+            const Color.fromRGBO(128, 128, 128, 0.3),
+            const Color.fromRGBO(128, 128, 128, 0.1),
           ],
         );
-        textColor = Colors.grey;
-        iconData = Icons.event;
     }
 
     return Container(
@@ -126,13 +142,12 @@ class UpcomingActivitiesSection extends StatelessWidget {
               Icon(
                 iconData,
                 color: textColor,
-                size: 20,
+                size: AppTheme.iconSizeSmall + 4, // 20
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: AppTheme.spacing + 4), // 12
               Text(
                 activity['title'],
-                style: TextStyle(
-                  fontSize: 14,
+                style: textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
                   color: textColor,
                 ),
@@ -142,9 +157,8 @@ class UpcomingActivitiesSection extends StatelessWidget {
           ),
           Text(
             activity['time'],
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF2c3e50),
+            style: textTheme.bodyMedium?.copyWith(
+              color: colorScheme.onSurface,
             ),
             textDirection: TextDirection.rtl,
           ),

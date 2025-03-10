@@ -1,6 +1,7 @@
 // lib\widgets\common\activity_item.dart
 
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 
 class ActivityItem extends StatelessWidget {
   final String title;
@@ -9,21 +10,23 @@ class ActivityItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const ActivityItem({
-    Key? key,
+    super.key,
     required this.title,
     required this.time,
     required this.color,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
           borderRadius: BorderRadius.circular(10),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
@@ -33,17 +36,15 @@ class ActivityItem extends StatelessWidget {
           children: [
             Text(
               title,
-              style: TextStyle(
-                fontSize: 14,
-                color: color.withOpacity(0.8),
+              style: textTheme.bodyMedium?.copyWith(
+                color: Color.fromRGBO(color.red, color.green, color.blue, 0.8),
               ),
               textDirection: TextDirection.rtl,
             ),
             Text(
               time,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF2c3e50),
+              style: textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textDirection: TextDirection.rtl,
             ),

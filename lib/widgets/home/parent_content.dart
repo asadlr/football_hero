@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import '../common/upcoming_activities.dart';
 import '../common/fan_zone_preview.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
 
 class ParentHomeContent extends StatelessWidget {
   final Map<String, dynamic> userData;
@@ -16,21 +18,21 @@ class ParentHomeContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingDouble),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Child Info Card
-            _buildChildInfoCard(),
+            _buildChildInfoCard(context),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Parent Dashboard
-            _buildParentDashboard(),
+            _buildParentDashboard(context),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Upcoming Activities
             UpcomingActivitiesSection(
@@ -40,7 +42,7 @@ class ParentHomeContent extends StatelessWidget {
               },
             ),
             
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             
             // Fan Zone Preview
             FanZonePreview(
@@ -49,48 +51,53 @@ class ParentHomeContent extends StatelessWidget {
               },
             ),
             
-            const SizedBox(height: 30),
+            SizedBox(height: AppTheme.spacingTriple),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChildInfoCard() {
+  Widget _buildChildInfoCard(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
     final children = _getChildrenData();
     
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'My Children',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2C3E50),
-              ),
+              style: textTheme.headlineSmall,
             ),
-            const SizedBox(height: 15),
+            SizedBox(height: AppTheme.spacing + 7),
             if (children.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 10.0),
-                child: Center(child: Text('No children linked')),
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: AppTheme.spacing + 2),
+                child: Center(
+                  child: Text(
+                    'No children linked',
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onSurface.withOpacity(0.6),
+                    ),
+                  ),
+                ),
               )
             else
               Column(
                 children: children.map((child) {
-                  return _buildChildItem(child);
+                  return _buildChildItem(context, child);
                 }).toList(),
               ),
             
-            const SizedBox(height: 10),
+            SizedBox(height: AppTheme.spacing + 2),
             // Add child button
             Center(
               child: TextButton.icon(
@@ -100,7 +107,7 @@ class ParentHomeContent extends StatelessWidget {
                 icon: const Icon(Icons.add),
                 label: const Text('Link a Child'),
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFF3498DB),
+                  foregroundColor: AppColors.primaryBlue,
                 ),
               ),
             ),
@@ -110,9 +117,11 @@ class ParentHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildChildItem(Map<String, dynamic> child) {
+  Widget _buildChildItem(BuildContext context, Map<String, dynamic> child) {
+    final textTheme = Theme.of(context).textTheme;
+    
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12.0),
+      padding: EdgeInsets.only(bottom: AppTheme.spacing + 4),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         leading: CircleAvatar(
@@ -123,20 +132,21 @@ class ParentHomeContent extends StatelessWidget {
           child: child['profile_image'] == null
               ? const Icon(Icons.person, color: Colors.white)
               : null,
-          backgroundColor: const Color(0xFF3498DB),
+          backgroundColor: AppColors.primaryBlue,
         ),
         title: Text(
           child['name'] ?? 'Unknown',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+          style: textTheme.titleMedium,
         ),
         subtitle: Text(
           '${child['team'] ?? 'No team'} • ${child['position'] ?? 'Unknown position'}',
+          style: textTheme.bodySmall,
         ),
         trailing: IconButton(
-          icon: const Icon(Icons.arrow_forward_ios, size: 16),
+          icon: Icon(
+            Icons.arrow_forward_ios, 
+            size: AppTheme.iconSizeSmall,
+          ),
           onPressed: () {
             // Navigate to child details
           },
@@ -145,63 +155,65 @@ class ParentHomeContent extends StatelessWidget {
     );
   }
 
-  Widget _buildParentDashboard() {
+  Widget _buildParentDashboard(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Parent Dashboard',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2C3E50),
-              ),
+              style: textTheme.headlineSmall,
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: AppTheme.spacingDouble),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildDashboardItem(
+                  context,
                   'Upcoming Events',
                   '${userData['upcoming_events_count'] ?? 0}',
                   Icons.event,
-                  const Color(0x1A3498DB),
+                  AppColors.primaryBlue,
                   () {},
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: AppTheme.spacingDouble),
                 _buildDashboardItem(
+                  context,
                   'Messages',
                   '${userData['unread_messages'] ?? 0}',
                   Icons.message,
-                  const Color(0x1AE74C3C),
+                  AppColors.primaryRed,
                   () {},
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: AppTheme.spacingDouble),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 _buildDashboardItem(
+                  context,
                   'Payments',
                   '${userData['pending_payments'] ?? 0}',
                   Icons.payment,
-                  const Color(0x1AF39C12),
+                  AppColors.primaryAmber,
                   () {},
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: AppTheme.spacingDouble),
                 _buildDashboardItem(
+                  context,
                   'Sign-ups',
                   '${userData['pending_signups'] ?? 0}',
                   Icons.app_registration,
-                  const Color(0x1A2ECC71),
+                  AppColors.primaryGreen,
                   () {},
                 ),
               ],
@@ -213,42 +225,42 @@ class ParentHomeContent extends StatelessWidget {
   }
 
   Widget _buildDashboardItem(
+    BuildContext context,
     String title, 
     String value, 
     IconData icon, 
-    Color bgColor, 
+    Color color, 
     VoidCallback onTap
   ) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Expanded(
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: AppTheme.cardPadding,
           decoration: BoxDecoration(
-            color: bgColor,
+            color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: const Color(0xFF2C3E50)),
-              const SizedBox(height: 10),
+              Icon(icon, color: colorScheme.onSurface),
+              SizedBox(height: AppTheme.spacing + 2),
               Text(
                 value,
-                style: const TextStyle(
-                  fontSize: 20,
+                style: textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF2C3E50),
+                  color: colorScheme.onSurface,
                 ),
               ),
-              const SizedBox(height: 5),
+              SizedBox(height: AppTheme.spacing - 3),
               Text(
                 title,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF7F8C8D),
-                ),
+                style: textTheme.bodySmall,
               ),
             ],
           ),

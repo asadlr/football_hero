@@ -19,6 +19,7 @@ import 'screens/onboarding/favorites.dart';
 import 'screens/welcome.dart';
 import 'state/onboarding_state.dart';
 import 'screens/reset_password.dart';
+import 'theme/app_theme.dart'; // Import the centralized theme
 
 // Add a navigator key for GoRouter
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -79,15 +80,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'Football Hero',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        fontFamily: 'VarelaRound',
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          centerTitle: true,
-        ),
-      ),
+      theme: AppTheme.theme, // Use the centralized theme system
       supportedLocales: const [
         Locale('he', ''),
         Locale('en', ''),
@@ -341,6 +334,7 @@ class ErrorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      theme: AppTheme.theme, // Use the centralized theme here too
       home: Scaffold(
         body: Center(
           child: Padding(
@@ -386,7 +380,10 @@ class ErrorScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Center(
-        child: Text(error, style: const TextStyle(color: Colors.red, fontSize: 18)),
+        child: Text(
+          error, 
+          style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.red),
+        ),
       ),
     );
   }

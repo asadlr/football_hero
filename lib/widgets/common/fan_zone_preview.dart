@@ -1,6 +1,7 @@
 // lib\widgets\common\fan_zone_preview.dart
 
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 
 class FanZonePreview extends StatelessWidget {
   final VoidCallback? onViewAll;
@@ -12,26 +13,25 @@ class FanZonePreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: AppTheme.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
+                Text(
                   'Fan Zone News',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C3E50),
-                  ),
+                  style: textTheme.headlineSmall,
                 ),
                 if (onViewAll != null)
                   TextButton(
@@ -40,7 +40,7 @@ class FanZonePreview extends StatelessWidget {
                   ),
               ],
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: AppTheme.spacing + 2),
             
             // News Item 1
             _buildNewsItem(
@@ -48,6 +48,7 @@ class FanZonePreview extends StatelessWidget {
               'Join us for a friendly match this weekend...',
               'assets/images/placeholder.jpg',
               '2h ago',
+              context,
             ),
             const Divider(),
             
@@ -57,6 +58,7 @@ class FanZonePreview extends StatelessWidget {
               'Improve your skills with these techniques...',
               'assets/images/placeholder.jpg',
               '1d ago',
+              context,
             ),
           ],
         ),
@@ -65,9 +67,18 @@ class FanZonePreview extends StatelessWidget {
   }
 
   // Helper to build news items
-  Widget _buildNewsItem(String title, String preview, String imagePath, String timeAgo) {
+  Widget _buildNewsItem(
+    String title, 
+    String preview, 
+    String imagePath, 
+    String timeAgo,
+    BuildContext context,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: EdgeInsets.symmetric(vertical: AppTheme.spacing),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -81,36 +92,31 @@ class FanZonePreview extends StatelessWidget {
             ),
             child: const Icon(Icons.photo, color: Colors.white),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: AppTheme.spacing + 4),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+                  style: textTheme.titleMedium?.copyWith(
                     fontSize: 14,
-                    color: Color(0xFF2C3E50),
+                    color: colorScheme.onSurface,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: AppTheme.spacing / 2),
                 Text(
                   preview,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[700],
-                  ),
+                  style: textTheme.bodySmall,
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: AppTheme.spacing / 2),
                 Text(
                   timeAgo,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[500],
+                  style: textTheme.labelSmall?.copyWith(
                     fontStyle: FontStyle.italic,
+                    color: colorScheme.onSurface.withOpacity(0.5),
                   ),
                 ),
               ],

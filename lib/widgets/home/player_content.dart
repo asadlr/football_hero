@@ -5,25 +5,25 @@ import '../common/achievements_card.dart';
 import '../common/team_card_widget.dart';
 import '../common/upcoming_events_card.dart';
 import '../common/fan_club_news_card.dart';
-import '../../localization/app_strings.dart';
+import '../../theme/app_theme.dart';
 
 class PlayerHomeContent extends StatelessWidget {
   final Map<String, dynamic> userData;
   final Map<String, Color>? cardColors;
 
   const PlayerHomeContent({
-    Key? key,
+    super.key,
     required this.userData,
     this.cardColors,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     // Sample data - in real app, this would come from userData
     final achievements = {
-      'challenges': '3/5',
-      'stars': '12',
-      'profile': '80%',
+      'Challenges': '3/5',
+      'Stars': '12',
+      'Profile': '80%',
     };
 
     // Team data (null if user has no team)
@@ -62,6 +62,10 @@ class PlayerHomeContent extends StatelessWidget {
 
     // Get the user's favorite club name - default if not found
     final clubName = userData['favorite_club'] ?? 'מכבי חיפה';
+    
+    // Get card colors from theme if not provided - based on player role
+    final Map<String, Color> effectiveCardColors = cardColors ?? 
+        AppTheme.getCardColorsForRole('player');
 
     return Directionality(
       textDirection: TextDirection.rtl, // RTL support for entire component
@@ -70,10 +74,10 @@ class PlayerHomeContent extends StatelessWidget {
         children: [
           AchievementsCard(
             achievements: achievements,
-            backgroundColor: cardColors?['achievements'],
+            backgroundColor: effectiveCardColors['achievements'],
           ),
           
-          const SizedBox(height: 8),
+          SizedBox(height: AppTheme.spacing),
           
           TeamCardWidget(
             teamData: teamData,
@@ -83,22 +87,22 @@ class PlayerHomeContent extends StatelessWidget {
             onViewTeam: () {
               // Handle view team action
             },
-            backgroundColor: cardColors?['team'],
+            backgroundColor: effectiveCardColors['team'],
           ),
           
-          const SizedBox(height: 8),
+          SizedBox(height: AppTheme.spacing),
           
           UpcomingEventsCard(
             events: upcomingEvents,
-            backgroundColor: cardColors?['events'],
+            backgroundColor: effectiveCardColors['events'],
           ),
           
-          const SizedBox(height: 8),
+          SizedBox(height: AppTheme.spacing),
           
           FanClubNewsCard(
             news: fanClubNews,
             clubName: clubName,
-            backgroundColor: cardColors?['news'],
+            backgroundColor: effectiveCardColors['news'],
           ),
         ],
       ),
