@@ -1,9 +1,13 @@
-// lib/screens/parent_onboarding.dart
+// lib/screens/onboarding/parent_onboarding.dart
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../state/onboarding_state.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
+import '../../localization/app_strings.dart';
+import '../../localization/localization_manager.dart';
 
 class ParentOnboarding extends StatefulWidget {
   final String userId;
@@ -30,8 +34,6 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
   final TextEditingController _parentIdController = TextEditingController();
   final TextEditingController _playerEmailController = TextEditingController();
   String? _playerUserId;
-
-  static const Color alternateThemeColor = Color(0xFFE0E3E7);
 
   @override
   void initState() {
@@ -73,7 +75,7 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
         });
       }
     } catch (e) {
-      AppLogger.error('Error fetching player email');
+      AppLogger.error(message: 'Error fetching player email');
     }
   }
 
@@ -92,7 +94,7 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
 
   Future<Map<String, dynamic>?> _verifyPlayer(String email) async {
     try {
-      AppLogger.info('Verifying player email');
+      AppLogger.info(message: 'Verifying player email');
       
       final response = await Supabase.instance.client
           .rpc('get_player_by_email', params: {'search_email': email});
@@ -106,41 +108,41 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
         final dateOfBirth = userData['date_of_birth'] as String?;
 
         if (userId == null || existsAsPlayer != true) {
-          AppLogger.info('User not found or not a player');
+          AppLogger.info(message: 'User not found or not a player');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('שחקן לא נמצא'),
-                backgroundColor: Colors.red,
+              SnackBar(
+                content: Text(AppStrings.get('player_not_found')),
+                backgroundColor: AppColors.error,
               ),
             );
           }
           return null;
         }
 
-        AppLogger.info('Valid player found');
+        AppLogger.info(message: 'Valid player found');
         return {
           'userId': userId,
           'playerName': playerName,
           'dateOfBirth': dateOfBirth,
         };
       } else {
-        AppLogger.info('No user found or empty response');
+        AppLogger.info(message: 'No user found or empty response');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('שחקן לא נמצא'),
-              backgroundColor: Colors.red,
+            SnackBar(
+              content: Text(AppStrings.get('player_not_found')),
+              backgroundColor: AppColors.error,
             ),
           );
         }
         return null;
       }
     } catch (e) {
-      AppLogger.error('Error verifying player');
+      AppLogger.error(message: 'Error verifying player');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('אירעה שגיאה בחיפוש השחקן')),
+          SnackBar(content: Text(AppStrings.get('player_search_error'))),
         );
       }
       return null;
@@ -154,24 +156,28 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('אימות פרטי השחקן'),
+          title: Text(AppStrings.get('verify_player_details')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('שם: ${playerData['playerName'] ?? 'לא זמין'}'),
-              Text('תאריך לידה: ${playerData['dateOfBirth'] ?? 'לא זמין'}'),
-              const SizedBox(height: 20),
-              const Text('האם אלו הפרטים הנכונים של השחקן?'),
+              Text(
+                '${AppStrings.get('name_label')}: ${playerData['playerName'] ?? AppStrings.get('not_available')}'
+              ),
+              Text(
+                '${AppStrings.get('dob_label')}: ${playerData['dateOfBirth'] ?? AppStrings.get('not_available')}'
+              ),
+              const SizedBox(height: ThemeConstants.md),
+              Text(AppStrings.get('confirm_player_details')),
             ],
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('לא'),
+              child: Text(AppStrings.get('no')),
               onPressed: () => Navigator.of(context).pop(false),
             ),
             TextButton(
-              child: const Text('כן'),
+              child: Text(AppStrings.get('yes')),
               onPressed: () => Navigator.of(context).pop(true),
             ),
           ],
@@ -216,7 +222,7 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
             _isLoading = false;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('אימות השחקן בוטל')),
+            SnackBar(content: Text(AppStrings.get('player_verification_cancelled'))),
           );
           return;
         }
@@ -258,10 +264,10 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
         });
       }
     } catch (e) {
-      AppLogger.error('Error in parent onboarding submission');
+      AppLogger.error(message: 'Error in parent onboarding submission');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('אירעה שגיאה בעיבוד הבקשה. אנא נסה שוב.')),
+          SnackBar(content: Text(AppStrings.get('unexpected_error'))),
         );
       }
     } finally {
@@ -275,6 +281,9 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final localizationManager = LocalizationManager();
+    
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -283,13 +292,13 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
         }
       },
       child: Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: localizationManager.textDirection,
         child: Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: BackButton(
-              color: Colors.black,
+              color: AppColors.textPrimary,
               onPressed: _handleBack,
             ),
           ),
@@ -303,64 +312,57 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
                 ),
               ),
               Center(
-                child: Container(
+                child: Card(
                   margin: const EdgeInsets.all(18.0),
-                  padding: const EdgeInsets.all(18.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(230),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'הורה - שלב ההרשמה',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                  elevation: AppTheme.theme.cardTheme.elevation,
+                  shape: AppTheme.theme.cardTheme.shape,
+                  child: Padding(
+                    padding: const EdgeInsets.all(18.0),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            AppStrings.get('parent_registration_title'),
+                            style: theme.textTheme.headlineMedium,
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildParentIdField(),
-                              const SizedBox(height: 20),
-                              _buildPlayerEmailField(),
-                              const SizedBox(height: 20),
-                              ElevatedButton(
-                                onPressed: _isLoading ? null : _submitAndNavigate,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: _isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        strokeWidth: 2,
+                          const SizedBox(height: ThemeConstants.md),
+                          Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _buildParentIdField(theme),
+                                const SizedBox(height: ThemeConstants.md),
+                                _buildPlayerEmailField(theme),
+                                const SizedBox(height: ThemeConstants.md),
+                                ElevatedButton(
+                                  onPressed: _isLoading ? null : _submitAndNavigate,
+                                  style: theme.elevatedButtonTheme.style,
+                                  child: _isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        AppStrings.get('continue_button'),
+                                        style: theme.textTheme.labelLarge?.copyWith(
+                                          color: Colors.white,
+                                        ),
                                       ),
-                                    )
-                                  : const Text(
-                                      'המשך',
-                                      style: TextStyle(fontSize: 15, color: Colors.white),
-                                    ),
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -369,8 +371,10 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
                 Positioned.fill(
                   child: Container(
                     color: Colors.black.withAlpha(77),
-                    child: const Center(
-                      child: CircularProgressIndicator(),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.parentColor,
+                      ),
                     ),
                   ),
                 ),
@@ -381,69 +385,75 @@ class _ParentOnboardingState extends State<ParentOnboarding> {
     );
   }
 
-  Widget _buildParentIdField() {
+  Widget _buildParentIdField(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'מספר תעודת זהות:',
-          style: TextStyle(fontSize: 15),
+        Text(
+          AppStrings.get('personal_id_label'),
+          style: theme.textTheme.bodyLarge,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: ThemeConstants.sm),
         TextFormField(
           controller: _parentIdController,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
             filled: true,
-            fillColor: alternateThemeColor,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            fillColor: AppColors.background,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             isDense: true,
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'נא להזין מספר תעודת זהות';
+              return AppStrings.get('personal_id_required');
             }
             if (value.length != 9) {
-              return 'מספר תעודת זהות חייב להכיל 9 ספרות';
+              return AppStrings.get('personal_id_length');
             }
             return null;
           },
           keyboardType: TextInputType.number,
           maxLength: 9,
+          style: theme.textTheme.bodyMedium,
         ),
       ],
     );
   }
 
-  Widget _buildPlayerEmailField() {
+  Widget _buildPlayerEmailField(ThemeData theme) {
     if (!_isInitialized) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(
+          color: AppColors.parentColor,
+        ),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'אימייל השחקן (אופציונלי):',
-          style: TextStyle(fontSize: 15),
+        Text(
+          AppStrings.get('player_email_optional'),
+          style: theme.textTheme.bodyLarge,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: ThemeConstants.sm),
         TextFormField(
           controller: _playerEmailController,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
             filled: true,
-            fillColor: alternateThemeColor,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            fillColor: AppColors.background,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             isDense: true,
-            hintText: 'השאר ריק אם אין שחקן משויך',
+            hintText: AppStrings.get('leave_empty_if_no_player'),
           ),
           validator: (value) {
             if (value != null && value.isNotEmpty && !value.contains('@')) {
-              return 'נא להזין אימייל תקין';
+              return AppStrings.get('invalid_email');
             }
             return null;
           },
+          style: theme.textTheme.bodyMedium,
         ),
       ],
     );

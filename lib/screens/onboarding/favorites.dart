@@ -1,9 +1,14 @@
+// lib\screens\onboarding\favorites.dart
+
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../logger/logger.dart';
-import '../home.dart';
 import '../../state/onboarding_state.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
+import '../../localization/app_strings.dart';
+import '../../localization/localization_manager.dart';
 
 class FavoritesScreen extends StatefulWidget {
   final String userId;
@@ -82,7 +87,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
             'club_id': clubResponse['id'],
           });
         } catch (e) {
-          AppLogger.warning('Could not find club');
+          AppLogger.warning(message: 'Could not find club');
           // Continue with the next club
         }
       }
@@ -105,9 +110,9 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       }
     } catch (e) {
       if (mounted) {
-        AppLogger.error('Error saving favorite clubs');
+        AppLogger.error(message: 'Error saving favorite clubs');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('שגיאה בשמירת קבוצות אהובות. אנא נסה שוב.')),
+          SnackBar(content: Text(AppStrings.get('favorites_save_error'))),
         );
         setState(() {
           _isLoading = false;
@@ -154,45 +159,51 @@ class FavoritesScreenState extends State<FavoritesScreen> {
       }
     } catch (e) {
       if (mounted) {
-        AppLogger.error('Error searching for clubs');
+        AppLogger.error(message: 'Error searching for clubs');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('שגיאה בחיפוש מועדונים. אנא נסה שוב.')),
+          SnackBar(content: Text(AppStrings.get('clubs_search_error'))),
         );
       }
     }
   }
 
-  Widget _buildSearchField(int searchFieldIndex, List<String> searchResults) {
+  Widget _buildSearchField(ThemeData theme, int searchFieldIndex, List<String> searchResults) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TextFormField(
-          decoration: const InputDecoration(
-            labelText: 'חפש מועדון כדורגל',
-            prefixIcon: Icon(Icons.search),
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            labelText: AppStrings.get('search_football_club'),
+            prefixIcon: const Icon(Icons.search),
+            border: const OutlineInputBorder(),
+            filled: true,
+            fillColor: AppColors.background,
           ),
           onChanged: (value) => _searchClubs(value, searchFieldIndex),
+          style: theme.textTheme.bodyMedium,
         ),
-        const SizedBox(height: 10.0),
+        const SizedBox(height: ThemeConstants.sm),
         if (searchResults.isNotEmpty)
           Container(
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(ThemeConstants.sm),
             ),
             child: ListView(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               children: searchResults.map((clubName) {
                 return ListTile(
-                  title: Text(clubName),
+                  title: Text(
+                    clubName,
+                    style: theme.textTheme.bodyMedium,
+                  ),
                   trailing: IconButton(
                     icon: Icon(
                       favoriteClubs.contains(clubName)
                           ? Icons.favorite
                           : Icons.favorite_border,
-                      color: favoriteClubs.contains(clubName) ? Colors.red : null,
+                      color: favoriteClubs.contains(clubName) ? AppColors.accent : null,
                     ),
                     onPressed: () {
                       setState(() {
@@ -210,20 +221,17 @@ class FavoritesScreenState extends State<FavoritesScreen> {
           ),
         if (favoriteClubs.isNotEmpty && searchFieldIndex == 1) // Show selected clubs once
           Padding(
-            padding: const EdgeInsets.only(top: 16.0),
+            padding: const EdgeInsets.only(top: ThemeConstants.md),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'הקבוצות שבחרת:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
+                Text(
+                  AppStrings.get('selected_clubs'),
+                  style: theme.textTheme.titleMedium,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: ThemeConstants.sm),
                 Wrap(
-                  spacing: 8,
+                  spacing: ThemeConstants.sm,
                   children: favoriteClubs.map((club) => Chip(
                     label: Text(club),
                     deleteIcon: const Icon(Icons.close, size: 16),
@@ -232,6 +240,8 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                         favoriteClubs.remove(club);
                       });
                     },
+                    backgroundColor: AppColors.background,
+                    side: BorderSide(color: AppColors.divider),
                   )).toList(),
                 ),
               ],
@@ -242,7 +252,11 @@ class FavoritesScreenState extends State<FavoritesScreen> {
   }
   
   @override
-  Widget build(BuildContext context) {
+  
+    Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final localizationManager = LocalizationManager();
+    
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -251,13 +265,13 @@ class FavoritesScreenState extends State<FavoritesScreen> {
         }
       },
       child: Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: localizationManager.textDirection,
         child: Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: BackButton(
-              color: Colors.black,
+              color: AppColors.textPrimary,
               onPressed: _handleBack,
             ),
           ),
@@ -275,41 +289,34 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                 child: SingleChildScrollView(
                   child: Card(
                     margin: const EdgeInsets.symmetric(horizontal: 20.0),
-                    color: Colors.white.withAlpha(230),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(15.0),
-                    ),
+                    elevation: theme.cardTheme.elevation,
+                    shape: theme.cardTheme.shape,
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
-                            'בחר את הקבוצות האהובות עליך',
+                          Text(
+                            AppStrings.get('choose_favorite_clubs'),
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w300,
+                            style: theme.textTheme.displayMedium?.copyWith(
                               fontFamily: 'RubikDirt',
                             ),
                           ),
-                          const SizedBox(height: 20.0),
-                          _buildSearchField(1, searchResults1),
-                          const SizedBox(height: 20.0),
-                          _buildSearchField(2, searchResults2),
-                          const SizedBox(height: 20.0),
-                          _buildSearchField(3, searchResults3),
-                          const SizedBox(height: 20.0),
+                          const SizedBox(height: ThemeConstants.md),
+                          _buildSearchField(theme, 1, searchResults1),
+                          const SizedBox(height: ThemeConstants.md),
+                          _buildSearchField(theme, 2, searchResults2),
+                          const SizedBox(height: ThemeConstants.md),
+                          _buildSearchField(theme, 3, searchResults3),
+                          const SizedBox(height: ThemeConstants.md),
                           ElevatedButton(
                             onPressed: _isLoading ? null : _saveFavorites,
                             style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 15.0,
-                              ),
+                              padding: const EdgeInsets.symmetric(vertical: 15.0),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30.0),
                               ),
-                              backgroundColor: Colors.blue,
                             ),
                             child: _isLoading
                               ? const SizedBox(
@@ -320,12 +327,9 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Text(
-                                  'סיום ההרשמה',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w300,
-                                    fontStyle: FontStyle.italic,
+                              : Text(
+                                  AppStrings.get('finish_registration'),
+                                  style: theme.textTheme.labelLarge?.copyWith(
                                     fontFamily: 'VarelaRound',
                                     color: Colors.white,
                                   ),
@@ -341,8 +345,10 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                 Positioned.fill(
                   child: Container(
                     color: Colors.black.withAlpha(77),
-                    child: const Center(
-                      child: CircularProgressIndicator(),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                 ),
@@ -353,3 +359,5 @@ class FavoritesScreenState extends State<FavoritesScreen> {
     );
   }
 }
+  
+ 

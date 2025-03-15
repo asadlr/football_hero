@@ -1,6 +1,12 @@
+//lib\screens\forgot_password.dart
+
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../theme/app_theme.dart';
+import '../theme/app_colors.dart';
+import '../localization/app_strings.dart';
 
 class ForgotPassword extends StatefulWidget {
   const ForgotPassword({super.key});
@@ -24,7 +30,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
     if (email.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('נא להזין דוא"ל')),
+        SnackBar(content: Text(AppStrings.get('email_required'))),
       );
       return;
     }
@@ -32,7 +38,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
     if (!_isValidEmail(email)) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('נא להזין כתובת דוא"ל תקינה')),
+        SnackBar(content: Text(AppStrings.get('invalid_email'))),
       );
       return;
     }
@@ -46,7 +52,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('הודעת איפוס סיסמה נשלחה')),
+        SnackBar(content: Text(AppStrings.get('reset_link_sent'))),
       );
       
       if (mounted) context.pop(); // Navigate back only if mounted
@@ -55,9 +61,9 @@ class _ForgotPasswordState extends State<ForgotPassword> {
       // Handle specific auth exceptions with user-friendly messages
       String errorMessage;
       if (e.message.contains('Rate limit')) {
-        errorMessage = 'יותר מדי בקשות. אנא נסה שוב מאוחר יותר.';
+        errorMessage = AppStrings.get('too_many_requests');
       } else {
-        errorMessage = 'שגיאה בשליחת הבקשה. אנא נסה שוב.';
+        errorMessage = AppStrings.get('reset_request_error');
       }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(errorMessage)),
@@ -66,7 +72,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
       if (!mounted) return;
       // Generic error message instead of exposing implementation details
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('שגיאה בעיבוד הבקשה. אנא נסה שוב מאוחר יותר.')),
+        SnackBar(content: Text(AppStrings.get('unexpected_error'))),
       );
     } finally {
       if (mounted) {
@@ -79,19 +85,23 @@ class _ForgotPasswordState extends State<ForgotPassword> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Directionality(
-      textDirection: TextDirection.rtl, // Enforces RTL layout
+      textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text(
-            'איפוס סיסמה',
-            style: TextStyle(
+          title: Text(
+            AppStrings.get('forgot_password_title'),
+            style: theme.textTheme.headlineMedium?.copyWith(
               fontFamily: 'RubikDirt',
-              fontWeight: FontWeight.w300,
+              color: AppColors.textPrimary,
             ),
           ),
           centerTitle: true,
-          backgroundColor: Colors.blue,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          iconTheme: IconThemeData(color: AppColors.textPrimary),
         ),
         body: Stack(
           children: [
@@ -107,7 +117,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
               child: SingleChildScrollView(
                 child: Card(
                   margin: const EdgeInsets.symmetric(horizontal: 20.0),
-                  color: const Color.fromRGBO(255, 255, 255, 0.9), // Adjusted for precision
+                  elevation: AppTheme.theme.cardTheme.elevation ?? 4,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15.0),
                   ),
@@ -116,13 +126,11 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text(
-                          'הזן את הדוא"ל שלך ואנו נשלח קישור לאיפוס סיסמה',
+                        Text(
+                          AppStrings.get('forgot_password_description'),
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
+                          style: theme.textTheme.bodyLarge?.copyWith(
                             fontFamily: 'VarelaRound',
-                            fontWeight: FontWeight.w300,
                           ),
                         ),
                         const SizedBox(height: 20.0),
@@ -130,15 +138,18 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           textAlign: TextAlign.right,
-                          decoration: const InputDecoration(
-                            labelText: 'דוא"ל',
-                            border: OutlineInputBorder(),
+                          style: theme.textTheme.bodyLarge,
+                          decoration: InputDecoration(
+                            labelText: AppStrings.get('email_label'),
+                            labelStyle: theme.textTheme.bodyMedium,
+                            border: const OutlineInputBorder(),
                           ),
                         ),
                         const SizedBox(height: 20.0),
                         ElevatedButton(
                           onPressed: _isLoading ? null : _sendPasswordResetEmail,
                           style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryBlue,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 50.0,
                               vertical: 15.0,
@@ -146,22 +157,19 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(30.0),
                             ),
-                            backgroundColor: Colors.blue,
                           ),
                           child: _isLoading
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,
                                   child: CircularProgressIndicator(
+                                    color: Colors.white,
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                   ),
                                 )
-                              : const Text(
-                                  'שלח קישור לאיפוס',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w300,
+                              : Text(
+                                  AppStrings.get('send_reset_link'),
+                                  style: theme.textTheme.labelLarge?.copyWith(
                                     color: Colors.white,
                                     fontFamily: 'RubikDirt',
                                   ),

@@ -1,5 +1,3 @@
-// lib\widgets\common\activity_item.dart
-
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 
@@ -19,38 +17,49 @@ class ActivityItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
     
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
+        margin: EdgeInsets.only(bottom: ThemeConstants.sm),
         decoration: BoxDecoration(
-          color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
-          borderRadius: BorderRadius.circular(10),
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(ThemeConstants.borderRadius),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
+        padding: EdgeInsets.symmetric(
+          horizontal: ThemeConstants.md, 
+          vertical: ThemeConstants.sm + 4,
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          textDirection: TextDirection.rtl, // RTL support
+          textDirection: TextDirection.rtl,
           children: [
-            Text(
-              title,
-              style: textTheme.bodyMedium?.copyWith(
-                color: Color.fromRGBO(color.red, color.green, color.blue, 0.8),
-              ),
-              textDirection: TextDirection.rtl,
-            ),
-            Text(
-              time,
-              style: textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-              textDirection: TextDirection.rtl,
-            ),
+            _buildTitleText(theme),
+            _buildTimeText(theme),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildTitleText(ThemeData theme) {
+    return Text(
+      title,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: color.withOpacity(0.8),
+      ),
+      textDirection: TextDirection.rtl,
+    );
+  }
+
+  Widget _buildTimeText(ThemeData theme) {
+    return Text(
+      time,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: theme.colorScheme.onSurface,
+      ),
+      textDirection: TextDirection.rtl,
     );
   }
 }

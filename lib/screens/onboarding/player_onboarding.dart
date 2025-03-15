@@ -1,11 +1,16 @@
+//lib\screens\onboarding\player_onboarding.dart
+//lib\screens\onboarding\player_onboarding.dart
+
 import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../state/onboarding_state.dart';
-
-const Color alternateThemeColor = Color(0xFFF5F5F5); // Light grey color
+import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
+import '../../localization/app_strings.dart';
+import '../../localization/localization_manager.dart';
 
 class PlayerOnboarding extends StatefulWidget {
   final String userId;
@@ -95,7 +100,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
 
       return response['id'] as String?;
     } catch (e) {
-      AppLogger.error('Error fetching team ID');
+      AppLogger.error(message: 'Error fetching team ID');
       return null;
     }
   }
@@ -131,7 +136,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
         skills: skills,
       );
 
-      AppLogger.info('Player Onboarding form submitted');
+      AppLogger.info(message: 'Player Onboarding form submitted');
 
       try {
         String? teamId;
@@ -141,7 +146,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
           if (teamId == null) {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
+              SnackBar(content: Text(AppStrings.get('team_not_found'))),
             );
             setState(() {
               _isLoading = false;
@@ -165,7 +170,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
               'skills': jsonEncode(skills.toMap()), // Encode the PlayerSkills object to a Map
             });
         } catch (playerInsertError) {
-          AppLogger.warning('Could not insert into players table, possibly removed. Storing player data in metadata');
+          AppLogger.warning(message: 'Could not insert into players table, possibly removed. Storing player data in metadata');
           
           // If players table is gone, store the data as metadata in a JSON field in users table
           final Map<String, dynamic> playerMetadata = {
@@ -196,7 +201,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                 'status': 'pending'
               });
           } catch (teamMemberError) {
-            AppLogger.error('Error adding user to team');
+            AppLogger.error(message: 'Error adding user to team');
             // Don't rethrow, since joining a team is not critical to continue
           }
         }
@@ -208,10 +213,10 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
           });
         }
       } catch (e) {
-        AppLogger.error('Error during player onboarding');
+        AppLogger.error(message: 'Error during player onboarding');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('אירעה שגיאה בעת שמירת הנתונים. אנא נסה שוב.')),
+          SnackBar(content: Text(AppStrings.get('unexpected_error'))),
         );
       } finally {
         if (mounted) {
@@ -225,8 +230,10 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final localizationManager = LocalizationManager();
+    
     return PopScope(
-      // Use onPopInvokedWithResult instead of onPopInvoked
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop) {
@@ -234,13 +241,13 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
         }
       },
       child: Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: localizationManager.textDirection,
         child: Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: BackButton(
-              color: Colors.black,
+              color: AppColors.textPrimary,
               onPressed: _handleBack,
             ),
           ),
@@ -254,70 +261,63 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                 ),
               ),
               Center(
-                child: Container(
+                child: Card(
                   margin: const EdgeInsets.all(18.0),
-                  padding: const EdgeInsets.all(18.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(230),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'שחקן - שלב ההרשמה',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                  elevation: AppTheme.theme.cardTheme.elevation,
+                  shape: AppTheme.theme.cardTheme.shape,
+                  child: Padding(
+                    padding: const EdgeInsets.all(18.0),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            AppStrings.get('player_registration_title'),
+                            style: theme.textTheme.headlineMedium,
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildTeamNameField(),
-                              const SizedBox(height: 2),
-                              _buildPositionSelection(),
-                              const SizedBox(height: 10),
-                              _buildHeightWeightFields(),
-                              const SizedBox(height: 10),
-                              _buildLegSelection(),
-                              const SizedBox(height: 10),
-                              _buildSkillsSliders(),
-                              const SizedBox(height: 10),
-                              ElevatedButton(
-                                onPressed: _isLoading ? null : _submitAndNavigate,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: _isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        strokeWidth: 2,
+                          const SizedBox(height: ThemeConstants.md),
+                          Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _buildTeamNameField(theme),
+                                const SizedBox(height: ThemeConstants.xs),
+                                _buildPositionSelection(theme),
+                                const SizedBox(height: ThemeConstants.sm),
+                                _buildHeightWeightFields(theme),
+                                const SizedBox(height: ThemeConstants.sm),
+                                _buildLegSelection(theme),
+                                const SizedBox(height: ThemeConstants.sm),
+                                _buildSkillsSliders(theme),
+                                const SizedBox(height: ThemeConstants.sm),
+                                ElevatedButton(
+                                  onPressed: _isLoading ? null : _submitAndNavigate,
+                                  style: theme.elevatedButtonTheme.style,
+                                  child: _isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        AppStrings.get('continue_button'),
+                                        style: theme.textTheme.labelLarge?.copyWith(
+                                          color: Colors.white,
+                                        ),
                                       ),
-                                    )
-                                  : const Text(
-                                      'המשך',
-                                      style: TextStyle(fontSize: 15, color: Colors.white),
-                                    ),
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -326,8 +326,10 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                 Positioned.fill(
                   child: Container(
                     color: Colors.black.withAlpha(77),
-                    child: const Center(
-                      child: CircularProgressIndicator(),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryBlue,
+                      ),
                     ),
                   ),
                 ),
@@ -338,15 +340,15 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
     );
   }
   
-  Widget _buildTeamNameField() {
+  Widget _buildTeamNameField(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'הקבוצה שלך: (אופציונלי)',
-          style: TextStyle(fontSize: 15),
+        Text(
+          AppStrings.get('your_team_optional'),
+          style: theme.textTheme.bodyLarge,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: ThemeConstants.sm),
         Row(
           children: [
             Expanded(
@@ -366,7 +368,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                     final List<dynamic> data = response as List<dynamic>;
                     return data.map<String>((team) => team['name'] as String);
                   } catch (error) {
-                    AppLogger.error('Error fetching teams');
+                    AppLogger.error(message: 'Error fetching teams');
                     return const Iterable<String>.empty();
                   }
                 },
@@ -392,12 +394,12 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                   return TextFormField(
                     controller: fieldController,
                     focusNode: fieldFocusNode,
-                    decoration: const InputDecoration(
-                      labelText: 'שם הקבוצה',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      labelText: AppStrings.get('team_name'),
+                      border: const OutlineInputBorder(),
                       filled: true,
-                      fillColor: alternateThemeColor,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      fillColor: AppColors.background,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       isDense: true,
                     ),
                     onChanged: (value) async {
@@ -426,7 +428,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                             _isTeamValid = exactMatch != null && exactMatch.isNotEmpty;
                           });
                         } catch (error) {
-                          AppLogger.error('Error validating team');
+                          AppLogger.error(message: 'Error validating team');
                           setState(() {
                             _isTeamValid = false;
                           });
@@ -442,7 +444,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                         return null; // Optional field can be empty
                       }
                       if (!_isTeamValid) {
-                        return 'יש לבחור קבוצה מהרשימה';
+                        return AppStrings.get('select_team_from_list');
                       }
                       return null;
                     },
@@ -482,43 +484,39 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
           ],
         ),
         const SizedBox(height: 8),
-        const Text(
-          'השאר/י  ריק במידה ואין לך קבוצה או שהקבוצה לא נמצאת',
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.black,
-            fontStyle: FontStyle.italic,
-          ),
+        Text(
+          AppStrings.get('leave_empty_if_no_team'),
+          style: theme.textTheme.bodySmall,
         ),
       ],
     );
   }
 
-  Widget _buildPositionSelection() {
-    const positions = [
-      {'label': 'שער', 'value': 'goalkeeper'},
-      {'label': 'הגנה', 'value': 'defense'},
-      {'label': 'קישור', 'value': 'midfield'},
-      {'label': 'התקפה', 'value': 'offense'},
+  Widget _buildPositionSelection(ThemeData theme) {
+    final positions = [
+      {'label': AppStrings.get('position_goalkeeper'), 'value': 'goalkeeper'},
+      {'label': AppStrings.get('position_defense'), 'value': 'defense'},
+      {'label': AppStrings.get('position_midfield'), 'value': 'midfield'},
+      {'label': AppStrings.get('position_offense'), 'value': 'offense'},
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'תפקיד:',
-          style: TextStyle(fontSize: 15),
+        Text(
+          AppStrings.get('position_label'),
+          style: theme.textTheme.bodyLarge,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: ThemeConstants.sm),
         Center(
           child: Wrap(
-            spacing: 2,
+            spacing: 8,
             runSpacing: 10,
             children: positions.map((position) {
               return FilterChip(
                 label: Text(
                   position['label']!,
-                  style: const TextStyle(fontSize: 12),
+                  style: theme.textTheme.bodySmall,
                 ),
                 selected: _selectedPositions.contains(position['value']),
                 onSelected: (selected) {
@@ -530,6 +528,8 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
                     }
                   });
                 },
+                backgroundColor: AppColors.background,
+                selectedColor: AppColors.playerColor.withOpacity(0.2),
               );
             }).toList(),
           ),
@@ -538,78 +538,81 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
     );
   }
 
-  Widget _buildHeightWeightFields() {
+  Widget _buildHeightWeightFields(ThemeData theme) {
     return Row(
       children: [
-        const Text('גובה: ', style: TextStyle(fontSize: 15)),
+        Text(AppStrings.get('height_label'), style: theme.textTheme.bodyLarge),
         Expanded(
           child: _buildTextFormField(
+            theme: theme,
             controller: _heightController,
-            labelText: '(בס"מ)',
-            validatorMessage: 'נא להזין גובה',
+            labelText: AppStrings.get('height_unit'),
+            validatorMessage: AppStrings.get('enter_height'),
           ),
         ),
-        const SizedBox(width: 10),
-        const Text('משקל: ', style: TextStyle(fontSize: 15)),
+        const SizedBox(width: ThemeConstants.sm),
+        Text(AppStrings.get('weight_label'), style: theme.textTheme.bodyLarge),
         Expanded(
           child: _buildTextFormField(
+            theme: theme,
             controller: _weightController,
-            labelText: '(בק"ג)',
-            validatorMessage: 'נא להזין משקל',
+            labelText: AppStrings.get('weight_unit'),
+            validatorMessage: AppStrings.get('enter_weight'),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLegSelection() {
+  Widget _buildLegSelection(ThemeData theme) {
     return Row(
       children: [
-        const Text(
-          'רגל חזקה:',
-          style: TextStyle(fontSize: 15),
+        Text(
+          AppStrings.get('strong_leg'),
+          style: theme.textTheme.bodyLarge,
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: ThemeConstants.sm),
         Expanded(
           child: DropdownButtonFormField<String>(
             value: _selectedLeg,
-            items: const [
-              DropdownMenuItem(value: 'right', child: Text('ימין')),
-              DropdownMenuItem(value: 'left', child: Text('שמאל')),
+            items: [
+              DropdownMenuItem(value: 'right', child: Text(AppStrings.get('right_leg'))),
+              DropdownMenuItem(value: 'left', child: Text(AppStrings.get('left_leg'))),
             ],
             onChanged: (value) {
               setState(() {
                 _selectedLeg = value;
               });
             },
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
               filled: true,
-              fillColor: alternateThemeColor,
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              fillColor: AppColors.background,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               isDense: true,
             ),
-            validator: (value) => value == null ? 'נא לבחור רגל חזקה' : null,
+            validator: (value) => value == null ? AppStrings.get('select_strong_leg') : null,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSkillsSliders() {
+  Widget _buildSkillsSliders(ThemeData theme) {
     final skills = [
-      {'label': 'מהירות', 'value': _speed, 'setter': (double v) => _speed = v},
-      {'label': 'נגיחות', 'value': _headers, 'setter': (double v) => _headers = v},
-      {'label': 'הגנה', 'value': _defending, 'setter': (double v) => _defending = v},
-      {'label': 'מסירה', 'value': _passing, 'setter': (double v) => _passing = v},
-      {'label': 'הבקעה', 'value': _scoring, 'setter': (double v) => _scoring = v},
-      {'label': 'שוערות', 'value': _goalkeeping, 'setter': (double v) => _goalkeeping = v},
+      {'label': AppStrings.get('skill_speed'), 'value': _speed, 'setter': (double v) => _speed = v},
+      {'label': AppStrings.get('skill_headers'), 'value': _headers, 'setter': (double v) => _headers = v},
+      {'label': AppStrings.get('skill_defending'), 'value': _defending, 'setter': (double v) => _defending = v},
+      {'label': AppStrings.get('skill_passing'), 'value': _passing, 'setter': (double v) => _passing = v},
+      {'label': AppStrings.get('skill_scoring'), 'value': _scoring, 'setter': (double v) => _scoring = v},
+      {'label': AppStrings.get('skill_goalkeeping'), 'value': _goalkeeping, 'setter': (double v) => _goalkeeping = v},
     ];
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: skills.map((skill) => _buildSlider(
+        theme,
         skill['label'] as String,
         skill['value'] as double,
         (value) => setState(() => (skill['setter'] as Function(double))(value)),
@@ -617,16 +620,16 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
     );
   }
 
-  Widget _buildSlider(String label, double value, ValueChanged<double> onChanged) {
+  Widget _buildSlider(ThemeData theme, String label, double value, ValueChanged<double> onChanged) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.only(top: ThemeConstants.xs),
           child: Text(
             label,
-            style: const TextStyle(fontSize: 15),
+            style: theme.textTheme.bodyLarge,
           ),
         ),
         SizedBox(
@@ -638,6 +641,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
             divisions: 10,
             label: value.round().toString(),
             onChanged: onChanged,
+            activeColor: AppColors.playerColor,
           ),
         ),
       ],
@@ -645,6 +649,7 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
   }
 
   Widget _buildTextFormField({
+    required ThemeData theme,
     required TextEditingController controller,
     required String labelText,
     required String validatorMessage,
@@ -655,12 +660,13 @@ class _PlayerOnboardingState extends State<PlayerOnboarding> {
         labelText: labelText,
         border: const OutlineInputBorder(),
         filled: true,
-        fillColor: alternateThemeColor,
+        fillColor: AppColors.background,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         isDense: true,
       ),
       validator: (value) =>
           value == null || value.isEmpty ? validatorMessage : null,
+      style: theme.textTheme.bodyMedium,
     );
   }
   

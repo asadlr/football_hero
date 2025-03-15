@@ -1,390 +1,178 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:go_router/go_router.dart';
-import 'screens/signup.dart';
-import 'screens/home.dart';
-import 'screens/login.dart';
-import 'screens/forgot_password.dart';
-import 'screens/onboarding.dart';
-import 'screens/onboarding/player_onboarding.dart';
-import 'screens/onboarding/parent_onboarding.dart';
-import 'screens/onboarding/coach_onboarding.dart';
-import 'screens/onboarding/community_onboarding.dart';
-import 'screens/onboarding/mentor_onboarding.dart';
-import 'screens/onboarding/favorites.dart';
-import 'screens/welcome.dart';
-import 'state/onboarding_state.dart';
-import 'screens/reset_password.dart';
-import 'theme/app_theme.dart'; // Import the centralized theme
+import 'package:logging/logging.dart';
 
-// Add a navigator key for GoRouter
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+// Configuration imports
+import './config/app_config.dart';
+import './config/router_config.dart';
+import './config/dependency_injection.dart';
+import './utils/error_handler.dart';
+import './localization/localization_manager.dart';
+import './providers/theme_provider.dart';
+import './app_lifecycle_observer.dart';
 
-Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+// Separate concerns: Create a configuration class
+class AppInitializer {
+  /// Initialize app dependencies
+  static Future<void> initialize() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  try {
-    // Load environment variables with error handling
-    String envFile = ".env";
-    bool envLoaded = false;
+    // Configure logging
+    _setupLogging();
 
     try {
-      await dotenv.load(fileName: envFile);
-      envLoaded = true;
-    } catch (e) {
-      debugPrint('Error loading .env file');
+      // Environment variable loading
+      await _loadEnvironmentVariables();
+
+      // Initialize Supabase
+      await _initializeSupabase();
+
+      // Initialize dependency injection
+      dependencyInjection.init();
+    } catch (error) {
+      ErrorHandler.handleInitializationError(error);
+    }
+  }
+
+  /// Set up logging with different levels based on build mode
+  static void _setupLogging() {
+    Logger.root.level = kDebugMode ? Level.ALL : Level.INFO;
+    Logger.root.onRecord.listen((record) {
+      debugPrint('${record.level.name}: ${record.time}: ${record.message}');
+      if (record.error != null) {
+        debugPrint('Error: ${record.error}');
+      }
+      if (record.stackTrace != null) {
+        debugPrint('Stack trace: ${record.stackTrace}');
+      }
+    });
+  }
+
+  /// Load environment variables with robust error handling
+  static Future<void> _loadEnvironmentVariables() async {
+    const List<String> possibleEnvFiles = [
+      '.env',
+      'assets/.env',
+    ];
+
+    for (final envFile in possibleEnvFiles) {
       try {
-        envFile = "assets/.env";
         await dotenv.load(fileName: envFile);
-        envLoaded = true;
+        _validateEnvironmentVariables();
+        return;
       } catch (e) {
-        debugPrint('Error loading alternate .env file');
+        debugPrint('Error loading env file: $envFile');
       }
     }
 
-    if (!envLoaded) {
-      throw Exception('Failed to load environment variables');
-    }
+    throw Exception('Failed to load environment variables');
+  }
 
-    // Validate environment variables
+  /// Validate critical environment variables
+  static void _validateEnvironmentVariables() {
     final supabaseUrl = dotenv.env['SUPABASE_URL'];
     final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'];
 
-    if (supabaseUrl == null || supabaseAnonKey == null || supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
-      throw Exception('Missing or empty Supabase keys in $envFile');
+    if (supabaseUrl == null || supabaseAnonKey == null || 
+        supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
+      throw Exception('Missing or invalid Supabase configuration');
     }
+  }
 
-    // Initialize Supabase
+  /// Initialize Supabase with configuration
+  static Future<void> _initializeSupabase() async {
     await Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey,
+      url: dotenv.env['SUPABASE_URL']!,
+      anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
       debug: kDebugMode,
     );
-
-    runApp(const MyApp());
-  } catch (error) {
-    debugPrint('Fatal error during app initialization');
-    runApp(ErrorApp(error: error.toString()));
   }
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+/// Main application entry point
+Future<void> main() async {
+  final stopwatch = Stopwatch()..start();
+  
+  // Initialize app dependencies
+  await AppInitializer.initialize();
+  
+  // Run the app with providers
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => LocalizationManager()),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      ],
+      child: const FootballHeroApp(),
+    ),
+  );
+  
+  // Log app startup time
+  stopwatch.stop();
+  Logger('AppStartup').info('App started in ${stopwatch.elapsedMilliseconds}ms');
+  
+  // Start tracking metrics after app is launched
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    dependencyInjection.performanceMonitor.trackEvent('app_launched', {
+      'startup_time_ms': stopwatch.elapsedMilliseconds,
+    });
+    
+    // Also track with analytics service
+    dependencyInjection.analyticsService.trackUserAction('app_launched', {
+      'startup_time_ms': stopwatch.elapsedMilliseconds,
+    });
+  });
+}
+
+/// Main application widget
+class FootballHeroApp extends StatefulWidget {
+  const FootballHeroApp({super.key});
+
+  @override
+  State<FootballHeroApp> createState() => _FootballHeroAppState();
+}
+
+class _FootballHeroAppState extends State<FootballHeroApp> {
+  late final AppLifecycleObserver _lifecycleObserver;
+  
+  @override
+  void initState() {
+    super.initState();
+    _lifecycleObserver = AppLifecycleObserver();
+  }
+  
+  @override
+  void dispose() {
+    _lifecycleObserver.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Get the providers
+    final localizationManager = Provider.of<LocalizationManager>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    
     return MaterialApp.router(
-      title: 'Football Hero',
+      title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.theme, // Use the centralized theme system
-      supportedLocales: const [
-        Locale('he', ''),
-        Locale('en', ''),
-      ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      locale: const Locale('he', ''),
-      routerConfig: _router,
-    );
-  }
-}
-
-/// Configure `go_router` for all routes including deep linking
-final GoRouter _router = GoRouter(
-  navigatorKey: _rootNavigatorKey,
-  initialLocation: '/',
-  debugLogDiagnostics: kDebugMode,
-  
-  routes: [
-    // Basic routes
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const Welcome()
-    ),
-    GoRoute(
-      path: '/signup',
-      builder: (context, state) => const Signup()
-    ),
-    GoRoute(
-      path: '/login',
-      builder: (context, state) => const Login()
-    ),
-    GoRoute(
-      path: '/forgot-password',
-      builder: (context, state) => const ForgotPassword()
-    ),
-    GoRoute(
-      path: '/home',
-      builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>?;
-        final userId = args?['userId'] as String? ?? 
-                       Supabase.instance.client.auth.currentUser?.id ?? '';
-        return HomeScreen(userId: userId);
-      }
-    ),
-
-    // Reset Password route for deep linking
-    GoRoute(
-      path: '/reset-password',
-      name: 'resetPassword',
-      builder: (context, state) {
-        final String? token = state.uri.queryParameters['code'];
-        if (token != null) {
-          return ResetPasswordScreen(accessToken: token);
-        } else {
-          return const ErrorScreen(error: "Invalid reset token");
-        }
-      },
-    ),
-    
-    // Onboarding routes
-    GoRoute(
-      path: '/onboarding',
-      builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>?;
-        if (args == null) {
-          return const ErrorScreen(error: "Missing onboarding arguments");
-        }
-        
-        final userId = args['userId'] as String?;
-        final onboardingState = args['onboardingState'] as OnboardingState?;
-        
-        if (userId == null) {
-          return const ErrorScreen(error: "Invalid user ID");
-        }
-        
-        return Onboarding(
-          userId: userId,
-          onboardingState: onboardingState ?? const OnboardingState.empty(),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/onboarding/player',
-      builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>?;
-        if (args == null) {
-          return const ErrorScreen(error: "Missing player onboarding arguments");
-        }
-        
-        final userId = args['userId'] as String?;
-        final onboardingState = args['onboardingState'] as OnboardingState?;
-        
-        if (userId == null) {
-          return const ErrorScreen(error: "Invalid user ID");
-        }
-        
-        return PlayerOnboarding(
-          userId: userId,
-          onboardingState: onboardingState ?? const OnboardingState.empty(),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/onboarding/parent',
-      builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>?;
-        if (args == null) {
-          return const ErrorScreen(error: "Missing parent onboarding arguments");
-        }
-        
-        final userId = args['userId'] as String?;
-        final onboardingState = args['onboardingState'] as OnboardingState?;
-        
-        if (userId == null) {
-          return const ErrorScreen(error: "Invalid user ID");
-        }
-        
-        return ParentOnboarding(
-          userId: userId,
-          onboardingState: onboardingState ?? const OnboardingState.empty(),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/onboarding/coach',
-      builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>?;
-        if (args == null) {
-          return const ErrorScreen(error: "Missing coach onboarding arguments");
-        }
-        
-        final userId = args['userId'] as String?;
-        final onboardingState = args['onboardingState'] as OnboardingState?;
-        
-        if (userId == null) {
-          return const ErrorScreen(error: "Invalid user ID");
-        }
-        
-        return CoachOnboarding(
-          userId: userId,
-          onboardingState: onboardingState ?? const OnboardingState.empty(),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/onboarding/mentor',
-      builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>?;
-        if (args == null) {
-          return const ErrorScreen(error: "Missing mentor onboarding arguments");
-        }
-        
-        final userId = args['userId'] as String?;
-        final onboardingState = args['onboardingState'] as OnboardingState?;
-        
-        if (userId == null) {
-          return const ErrorScreen(error: "Invalid user ID");
-        }
-        
-        return MentorOnboarding(
-          userId: userId,
-          onboardingState: onboardingState ?? const OnboardingState.empty(),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/onboarding/community',
-      builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>?;
-        if (args == null) {
-          return const ErrorScreen(error: "Missing community onboarding arguments");
-        }
-        
-        final userId = args['userId'] as String?;
-        final onboardingState = args['onboardingState'] as OnboardingState?;
-        
-        if (userId == null) {
-          return const ErrorScreen(error: "Invalid user ID");
-        }
-        
-        return CommunityManagerOnboarding(
-          userId: userId,
-          onboardingState: onboardingState ?? const OnboardingState.empty(),
-        );
-      },
-    ),
-    GoRoute(
-      path: '/onboarding/favorites',
-      builder: (context, state) {
-        final args = state.extra as Map<String, dynamic>?;
-        if (args == null) {
-          return const ErrorScreen(error: "Missing favorites arguments");
-        }
-        
-        final userId = args['userId'] as String?;
-        final onboardingState = args['onboardingState'] as OnboardingState?;
-        
-        if (userId == null) {
-          return const ErrorScreen(error: "Invalid user ID");
-        }
-        
-        return FavoritesScreen(
-          userId: userId,
-          onboardingState: onboardingState ?? const OnboardingState.empty(),
-        );
-      },
-    ),
-  ],
-  
-  // Handle incoming deep links
-  redirect: (BuildContext context, GoRouterState state) {
-    final uri = state.uri;
-    
-    // Handle app scheme (hoodhero or footballhero)
-    if (uri.scheme == 'hoodhero' || uri.scheme == 'footballhero') {
-      // For the format hoodhero:/reset-password?code=TOKEN
-      if (uri.path == '/reset-password') {
-        final code = uri.queryParameters['code'];
-        if (code != null) {
-          // Redirect to the reset-password route with the code
-          return '/reset-password?code=$code';
-        }
-      }
-    }
-    
-    // No redirection needed for normal routes
-    return null;
-  },
-  
-  // This lets us see any errors in routing
-  onException: (context, state, exception) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Navigation error: $exception'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  },
-);
-
-/// Error Handling Widget for app initialization errors
-class ErrorApp extends StatelessWidget {
-  final String error;
-
-  const ErrorApp({super.key, required this.error});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      theme: AppTheme.theme, // Use the centralized theme here too
-      home: Scaffold(
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.red,
-                  size: 48,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'שגיאה באתחול האפליקציה:', // Hebrew: "Error initializing the app"
-                  style: TextStyle(
-                    color: Colors.red[700],
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  error,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Error Screen for invalid routes
-class ErrorScreen extends StatelessWidget {
-  final String error;
-  const ErrorScreen({super.key, required this.error});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Text(
-          error, 
-          style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.red),
-        ),
-      ),
+      
+      // Theme configuration from provider
+      theme: themeProvider.lightTheme,
+      darkTheme: themeProvider.darkTheme,
+      themeMode: themeProvider.themeMode,
+      
+      // Localization configuration
+      supportedLocales: AppConfig.supportedLocales,
+      localizationsDelegates: AppConfig.localizationsDelegates,
+      locale: localizationManager.currentLocale,
+      
+      // Router configuration
+      routerConfig: AppRouterConfig.router,
     );
   }
 }

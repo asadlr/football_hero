@@ -1,339 +1,206 @@
-// lib\screens\home.dart
+//lib\screens\home.dart
 
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:logging/logging.dart';
-import '../models/user_role.dart' as models;
-import 'profile.dart';
-import '../localization/app_strings.dart';
+import 'package:provider/provider.dart';
+import '../localization/localization_manager.dart';
+import '../widgets/common/language_selector.dart';
+import '../utils/error_handler.dart'; // Add this import for ErrorHandler
+import '../localization/app_strings.dart'; // Add this import for AppStrings
+import 'settings_screen.dart';
 
-// Import role-specific content providers
+
+// Core dependencies
+import '../models/user_role.dart' as app_models;
+import '../config/dependency_injection.dart';
+// Removed unused imports
+
+// Widgets
 import '../widgets/home/player_content.dart';
 import '../widgets/home/coach_content.dart';
 import '../widgets/home/parent_content.dart';
 import '../widgets/home/mentor_content.dart';
 import '../widgets/home/community_manager_content.dart';
+import '../widgets/common/animated_bottom_nav.dart';
 
-// App color palette
-class AppColors {
-  static const Color achievements = Color(0xFFF5F5F5);
-  static const Color team = Color(0xFFF0F8FF);
-  static const Color events = Color(0xFFF0FFF0);
-  static const Color news = Color.fromARGB(255, 255, 240, 245);
-  static const Color primary = Color(0xFF3498DB);
-  static const Color secondary = Color(0xFF2ECC71);
-  static const Color accent = Color(0xFFE74C3C);
+/// Represents the state of the home screen
+class HomeScreenState {
+  final bool isLoading;
+  final Map<String, dynamic> userData;
+  final app_models.UserRole? userRole;
+  final String profileImageUrl;
+  final bool hasNewAchievements;
+
+  const HomeScreenState({
+    this.isLoading = true,
+    this.userData = const {},
+    this.userRole,
+    this.profileImageUrl = '',
+    this.hasNewAchievements = false,
+  });
+
+  /// Create a copy of the state with optional updates
+  HomeScreenState copyWith({
+    bool? isLoading,
+    Map<String, dynamic>? userData,
+    app_models.UserRole? userRole,
+    String? profileImageUrl,
+    bool? hasNewAchievements,
+  }) {
+    return HomeScreenState(
+      isLoading: isLoading ?? this.isLoading,
+      userData: userData ?? this.userData,
+      userRole: userRole ?? this.userRole,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      hasNewAchievements: hasNewAchievements ?? this.hasNewAchievements,
+    );
+  }
 }
 
+/// Home screen with dependency injection and service-based architecture
 class HomeScreen extends StatefulWidget {
   final String userId;
 
-  const HomeScreen({super.key, required this.userId});
+  const HomeScreen({
+    super.key, 
+    required this.userId
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Logger for better error tracking
+  // Services
+  final _userProfileService = dependencyInjection.userProfileService;
+  // Removed unused _quickActionService
+  final _achievementManager = dependencyInjection.achievementManager;
+
+  // Logger
   final _logger = Logger('HomeScreenLogger');
 
-  // User profile data
-  String _profileImageUrl = '';
-  models.UserRole? _userRole;
-  Map<String, dynamic> _userData = {};
-  bool _isLoading = true;
+  // State management
+  HomeScreenState _state = const HomeScreenState();
 
-  // Current selected bottom nav index
-  int _selectedIndex = 2; // Home is the default selected item
+  // Changed from final to regular int for the selected index
+  int _selectedIndex = 2; // Home is default
 
   @override
   void initState() {
     super.initState();
     _fetchUserProfile();
+    _achievementManager.addListener(_onAchievementStateChanged);
+    
+    // Track screen view
+    dependencyInjection.analyticsService.trackScreenView('home');
   }
 
+  @override
+  void dispose() {
+    _achievementManager.removeListener(_onAchievementStateChanged);
+    super.dispose();
+  }
+
+  /// Fetch user profile with comprehensive error handling
+// Update the _fetchUserProfile method in home.dart
+ 
   Future<void> _fetchUserProfile() async {
-    setState(() {
-      _isLoading = true;
-    });
+    dependencyInjection.performanceMonitor.startTimer('fetch_user_profile');
     
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user != null) {
-        // Fetch user profile and role details
-        final userData = await Supabase.instance.client
-            .from('users')
-            .select('*')  // Get all user data
-            .eq('id', user.id)
-            .single();
+      setState(() {
+        _state = _state.copyWith(isLoading: true);
+      });
 
-        // Get role-specific data based on user role
-        final roleString = userData['role'] as String?;
-        final roleData = await _fetchRoleSpecificData(user.id, roleString);
+      final userData = await _userProfileService.fetchUserProfile(widget.userId);
+      final userRole = _userProfileService.determineUserRole(userData['role']);
 
+      if (mounted) {
         setState(() {
-          _profileImageUrl = userData['profile_image_url'] ?? '';
-          _userRole = _determineUserRole(roleString);
-          _userData = {...userData, ...roleData};
-          _isLoading = false;
+          _state = _state.copyWith(
+            isLoading: false,
+            userData: userData,
+            userRole: userRole,
+            profileImageUrl: userData['profile_image_url'] ?? '',
+          );
+        });
+        
+        // Track user properties for analytics
+        final analyticsService = dependencyInjection.analyticsService;
+        analyticsService.setUserId(widget.userId);
+        analyticsService.setUserProperty('user_role', userRole.toString());
+        
+        dependencyInjection.performanceMonitor.trackEvent('user_profile_loaded', {
+          'role': userRole.toString(),
         });
       }
     } catch (e) {
       _logger.severe('Error fetching user profile', e);
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<Map<String, dynamic>> _fetchRoleSpecificData(String userId, String? roleString) async {
-    // Get role-specific data from the appropriate table
-    try {
-      final tableName = _getRoleTableName(roleString);
-      if (tableName.isEmpty) return {};
-
-      final data = await Supabase.instance.client
-          .from(tableName)
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle();
       
-      return data ?? {};
-    } catch (e) {
-      _logger.warning('Error fetching role-specific data', e);
-      return {};
-    }
-  }
-
-  String _getRoleTableName(String? roleString) {
-    switch (roleString) {
-      case 'player':
-        return 'players';
-      case 'parent':
-        return 'parents';
-      case 'coach':
-        return 'coaches';
-      case 'community_manager':
-        return 'community_managers';
-      case 'mentor':
-        return 'mentors';
-      default:
-        return '';
-    }
-  }
-
-  models.UserRole _determineUserRole(String? roleString) {
-    switch (roleString) {
-      case 'player':
-        return models.UserRole.player;
-      case 'parent':
-        return models.UserRole.parent;
-      case 'coach':
-        return models.UserRole.coach;
-      case 'community_manager':
-        return models.UserRole.communityManager;
-      case 'mentor':
-        return models.UserRole.mentor;
-      default:
-        return models.UserRole.player; // Default fallback
-    }
-  }
-
-  void _showQuickActionMenu() {
-    // Show role-specific quick actions
-    final actions = _getRoleSpecificQuickActions();
-    
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: actions.map((action) => 
-                ListTile(
-                  leading: Icon(action.icon),
-                  title: Text(action.title),
-                  onTap: () {
-                    Navigator.pop(context);
-                    action.onTap();
-                  },
-                )
-              ).toList(),
-            ),
-          ),
+      if (mounted) {
+        setState(() {
+          _state = _state.copyWith(
+            isLoading: false,
+            userRole: app_models.UserRole.player, // Fallback
+          );
+        });
+        
+        // Track error
+        dependencyInjection.analyticsService.trackError(
+          'profile_load_error',
+          e.toString(),
         );
-      },
-    );
-  }
-
-  List<QuickAction> _getRoleSpecificQuickActions() {
-    // Define role-specific quick actions
-    final List<QuickAction> actions = [];
-    
-    // Common actions for all roles
-    actions.add(
-      QuickAction(
-        icon: Icons.photo_camera,
-        title: 'העלאת תמונה',
-        onTap: () => _showSnackBarMessage('העלאת תמונה בקרוב'),
-      )
-    );
-    
-    // Role-specific actions
-    switch (_userRole) {
-      case models.UserRole.player:
-        actions.addAll([
-          QuickAction(
-            icon: Icons.video_call,
-            title: 'הוספת וידאו',
-            onTap: () => _showSnackBarMessage('העלאת וידאו בקרוב'),
-          ),
-          QuickAction(
-            icon: Icons.bar_chart,
-            title: 'הוספת סטטיסטיקות',
-            onTap: () => _showSnackBarMessage('הזנת סטטיסטיקות בקרוב'),
-          ),
-        ]);
-        break;
-      case models.UserRole.coach:
-        actions.addAll([
-          QuickAction(
-            icon: Icons.event,
-            title: 'הוספת אימון',
-            onTap: () => _showSnackBarMessage('הגדרת אימון בקרוב'),
-          ),
-          QuickAction(
-            icon: Icons.people,
-            title: 'ניהול קבוצה',
-            onTap: () => _showSnackBarMessage('ניהול קבוצה בקרוב'),
-          ),
-        ]);
-        break;
-      case models.UserRole.parent:
-        actions.addAll([
-          QuickAction(
-            icon: Icons.family_restroom,
-            title: 'קישור שחקן',
-            onTap: () => _showSnackBarMessage('קישור שחקן בקרוב'),
-          ),
-        ]);
-        break;
-      case models.UserRole.communityManager:
-        actions.addAll([
-          QuickAction(
-            icon: Icons.event,
-            title: 'הוספת אירוע',
-            onTap: () => _showSnackBarMessage('יצירת אירוע בקרוב'),
-          ),
-          QuickAction(
-            icon: Icons.campaign,
-            title: 'הודעה קהילתית',
-            onTap: () => _showSnackBarMessage('הודעה קהילתית בקרוב'),
-          ),
-        ]);
-        break;
-      case models.UserRole.mentor:
-        actions.addAll([
-          QuickAction(
-            icon: Icons.school,
-            title: 'הוספת שיעור',
-            onTap: () => _showSnackBarMessage('יצירת שיעור בקרוב'),
-          ),
-        ]);
-        break;
-      default:
-        break;
+        
+        dependencyInjection.performanceMonitor.trackEvent('user_profile_load_failed', {
+          'error': e.toString(),
+        });
+        
+        // Show error after the build is complete
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            ErrorHandler.handleNetworkError(
+              context,
+              e,
+              () => _fetchUserProfile(), // Retry function
+            );
+          }
+        });
+      }
+    } finally {
+      dependencyInjection.performanceMonitor.stopTimer('fetch_user_profile');
     }
-    
-    return actions;
   }
-
-  void _showSnackBarMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Directionality(
-          textDirection: TextDirection.rtl,
-          child: Text(message),
-        ),
-      ),
-    );
-  }
-
-  void _navigateToNotifications() {
-    _showSnackBarMessage('מעבר למסך התראות');
-  }
-
-  void _navigateToMessages() {
-    _showSnackBarMessage('מעבר למסך הודעות');
-  }
-
-  void _onBottomNavTapped(int index) {
+ 
+  /// Handle achievement state changes
+  void _onAchievementStateChanged() {
     setState(() {
-      _selectedIndex = index;
+      _state = _state.copyWith(
+        hasNewAchievements: _achievementManager.hasNewAchievements,
+      );
     });
-    
-    switch (index) {
-      case 0: // Highlights (Star)
-        _showSnackBarMessage('מעבר למסך הישגים');
-        break;
-      case 1: // Team (People)
-        _showSnackBarMessage('מעבר למסך קבוצה');
-        break;
-      case 2: // Home (House)
-        break;
-      case 3: // Fan Zone (Football)
-        _showSnackBarMessage('מעבר למסך מועדון אוהדים');
-        break;
-      case 4: // Events (Calendar)
-        _showSnackBarMessage('מעבר למסך אירועים');
-        break;
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl, // Global RTL for the entire screen
-      child: Scaffold(
-        body: _isLoading
-            ? _buildLoadingView()
-            : _buildHomeContent(),
-      ),
+    // Get the localization manager
+    final localizationManager = Provider.of<LocalizationManager>(context, listen: false);
+    
+    return Scaffold(
+      body: _state.isLoading
+          ? _buildLoadingView()
+          : _buildHomeContent(localizationManager),
     );
   }
 
+  /// Build loading view
   Widget _buildLoadingView() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // Background Image
-        Image.asset(
-          'assets/images/mainBackground.webp',
-          fit: BoxFit.cover,
-        ),
-        Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(
-                color: Colors.white,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                AppStrings.loading,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ],
-          ),
-        ),
-      ],
+    return const Center(
+      child: CircularProgressIndicator(),
     );
   }
 
-  Widget _buildHomeContent() {
+  /// Build home content based on user role
+  Widget _buildHomeContent(LocalizationManager localizationManager) {
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -345,26 +212,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
         // Safe Area with Content
         SafeArea(
-          child: Column(
-            children: [
-              // Top Navigation Bar
-              _buildTopNavigationBar(),
+          child: Directionality(
+            textDirection: localizationManager.textDirection,
+            child: Column(
+              children: [
+                // Top Navigation Bar
+                _buildTopNavigationBar(),
 
-              // Home Screen Content - Role-specific
-              Expanded(
-                child: _buildRoleSpecificContent(),
-              ),
+                // Home Screen Content - Role-specific
+                Expanded(
+                  child: _buildRoleSpecificContent(),
+                ),
 
-              // Bottom Navigation Bar
-              _buildBottomNavigationBar(),
-            ],
+                // Bottom Navigation Bar
+                _buildBottomNavigationBar(),
+              ],
+            ),
           ),
         ),
 
-        // Floating Action Button - Moved to left side
+        // Floating Action Button - positioned based on text direction
         Positioned(
           bottom: 70,
-          left: 20, // Left side in LTR (will be right in RTL)
+          // Position based on text direction
+          left: localizationManager.isRTL ? null : 20,
+          right: localizationManager.isRTL ? 20 : null,
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
@@ -372,22 +244,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppColors.primary,
-                  AppColors.primary.withOpacity(0.7),
+                  Colors.blue,
+                  Colors.blue.withAlpha(178), // Using withAlpha instead of withOpacity
                 ],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.primary.withOpacity(0.3),
+                  color: Colors.blue.withAlpha(76), // Using withAlpha instead of withOpacity
                   blurRadius: 8,
                   offset: const Offset(0, 4),
                 ),
               ],
             ),
             child: FloatingActionButton(
-              onPressed: _showQuickActionMenu,
-              elevation: 0, // Remove default elevation since we have custom shadow
-              backgroundColor: Colors.transparent, // Transparent to show gradient
+              onPressed: () {
+                // Show quick actions
+              },
+              elevation: 0,
+              backgroundColor: Colors.transparent,
               child: const Icon(Icons.add, color: Colors.white, size: 28),
             ),
           ),
@@ -396,214 +270,121 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-Widget _buildTopNavigationBar() {
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      textDirection: TextDirection.rtl, // RTL support
-      children: [
-        // Profile Icon (right side)
-        GestureDetector(
-          onTap: () {
-            if (_userRole != null) {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => ProfileScreen(
-                    userId: widget.userId, 
-                    userRole: _convertToProfileUserRole(_userRole!),
-                  ),
-                ),
-              );
-            }
-          },
-          child: _profileImageUrl.isNotEmpty
-              ? ClipOval(
-                  child: Image.network(
-                    _profileImageUrl,
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                  ),
-                )
-              : Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.transparent,
-                  ),
-                  child: const Icon(
-                    Icons.person,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-        ),
+  /// Build top navigation bar
 
-        // Spacer to push logo to the center
-        Spacer(flex: 2),
-
-        // Centered Logo
-        Image.asset(
-          'assets/images/logoS.webp',
-          width: 100,
-          height: 80,
-          fit: BoxFit.contain,
-        ),
-
-        // Spacer to push logo to the center
-        Spacer(flex: 2),
-
-        // Notification and Message Icons (left side)
-        Row(
-          textDirection: TextDirection.rtl,
-          children: [
-            IconButton(
-              icon: const Icon(
-                Icons.notifications_none, 
-                color: Colors.white,
-                size: 24,
-              ),
-              onPressed: _navigateToNotifications,
-              padding: EdgeInsets.zero,
-            ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(
-                Icons.mail_outline, 
-                color: Colors.white,
-                size: 24,
-              ),
-              onPressed: _navigateToMessages,
-              padding: EdgeInsets.zero,
-            ),
-          ],
-        ),
-      ],
-    ),
-  );
-}
-
-
-  Widget _buildRoleSpecificContent() {
-    // Return the appropriate content widget based on user role
-    if (_userRole == null) {
-      return Center(
-        child: Text(
-          'שגיאה בטעינת סוג משתמש',
-          style: TextStyle(color: Colors.white),
-        ),
-      );
-    }
-
-    // Pass card colors to role-specific content
-    final cardColors = {
-      'achievements': AppColors.achievements,
-      'team': AppColors.team,
-      'events': AppColors.events,
-      'news': AppColors.news,
-    };
-
-    // Render role-specific content
-    switch (_userRole) {
-      case models.UserRole.player:
-        return PlayerHomeContent(
-          userData: _userData,
-          cardColors: cardColors,
-        );
-      case models.UserRole.coach:
-        return CoachHomeContent(userData: _userData);
-      case models.UserRole.parent:
-        return ParentHomeContent(userData: _userData);
-      case models.UserRole.communityManager:
-        return CommunityManagerHomeContent(userData: _userData);
-      case models.UserRole.mentor:
-        return MentorHomeContent(userData: _userData);
-      default:
-        return Center(
-          child: Text(
-            'סוג משתמש לא מוכר',
-            style: TextStyle(color: Colors.white),
-          ),
-        );
-    }
-  }
-
-  Widget _buildBottomNavigationBar() {
+// Update _buildTopNavigationBar() in home.dart
+  Widget _buildTopNavigationBar() {
     return Container(
-      height: 50, // Smaller nav bar
-      color: Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        textDirection: TextDirection.rtl, // RTL support
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildNavItem(Icons.star, 0), // Star (Highlights)
-          _buildNavItem(Icons.people, 1), // People (Team)
-          _buildNavItem(Icons.home, 2), // House (Home)
-          _buildNavItem(Icons.sports_soccer, 3), // Football (Fan Zone)
-          _buildNavItem(Icons.calendar_today, 4), // Calendar (Events)
+          // Left side - App logo or title
+          const Text(
+            'FootballHero',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18.0,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          
+          // Right side - User avatar, language selector, settings, etc.
+          Row(
+            children: [
+              // Settings button
+              IconButton(
+                icon: const Icon(Icons.settings, color: Colors.white, size: 22),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
+                },
+              ),
+              
+              // Language selector
+              const LanguageSelector(),
+              
+              const SizedBox(width: 16),
+              
+              // Profile icon
+              GestureDetector(
+                onTap: () {
+                  // Navigate to profile screen
+                },
+                child: CircleAvatar(
+                  radius: 16,
+                  backgroundColor: Colors.white.withAlpha(51),
+                  child: _state.profileImageUrl.isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          _state.profileImageUrl,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                        ),
+                      )
+                    : const Icon(Icons.person, color: Colors.white, size: 16),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  // Helper method for nav items - removed text
-Widget _buildNavItem(IconData icon, int index) {
-  final bool isSelected = _selectedIndex == index;
-  
-  return Container(
-    decoration: isSelected 
-        ? BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppColors.primary,
-                AppColors.primary.withOpacity(0.7),
-              ],
-            ),
-            shape: BoxShape.circle,
-          )
-        : null,
-    child: IconButton(
-      onPressed: () => _onBottomNavTapped(index),
-      icon: Icon(
-        icon,
-        color: isSelected ? Colors.white : Colors.grey,
-        size: 24,
-      ),
-    ),
-  );
-}
-
-    
-    // Helper method to convert between the two UserRole enums
-    UserRole _convertToProfileUserRole(models.UserRole modelUserRole) {
-      switch (modelUserRole) {
-        case models.UserRole.player:
-          return UserRole.player;
-        case models.UserRole.parent:
-          return UserRole.parent;
-        case models.UserRole.coach:
-          return UserRole.coach;
-        case models.UserRole.communityManager:
-          return UserRole.communityManager;
-        case models.UserRole.mentor:
-          return UserRole.mentor;
-      }
-    }
+  /// Build bottom navigation bar
+  Widget _buildBottomNavigationBar() {
+    return AnimatedBottomNav(
+      selectedIndex: _selectedIndex,
+      onItemSelected: (index) {
+        setState(() {
+          _selectedIndex = index;
+        });
+        
+        // Track navigation item selection
+        final analyticsService = dependencyInjection.analyticsService;
+        final tabNames = ['highlights', 'team', 'home', 'fan_zone', 'events'];
+        
+        if (index < tabNames.length) {
+          analyticsService.trackUserAction('tab_selected', {
+            'tab_name': tabNames[index],
+          });
+        }
+      },
+    );
   }
 
-// Model class for quick actions
-class QuickAction {
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
+  // Removed unused _buildNavItem method
 
-  QuickAction({
-    required this.icon, 
-    required this.title, 
-    required this.onTap
-  });
+  /// Build error view for undefined role
+  Widget _buildErrorView() {
+    return Center(
+      child: Text(
+        'Unable to determine user role',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    );
+  }
+
+  /// Render role-specific home content
+  Widget _buildRoleSpecificContent() {
+    switch (_state.userRole) {
+      case app_models.UserRole.player:
+        return PlayerHomeContent(userData: _state.userData);
+      case app_models.UserRole.coach:
+        return CoachHomeContent(userData: _state.userData);
+      case app_models.UserRole.parent:
+        return ParentHomeContent(userData: _state.userData);
+      case app_models.UserRole.communityManager:
+        return CommunityManagerHomeContent(userData: _state.userData);
+      case app_models.UserRole.mentor:
+        return MentorHomeContent(userData: _state.userData);
+      default:
+        return _buildErrorView();
+    }
+  }
 }

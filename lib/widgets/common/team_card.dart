@@ -1,5 +1,3 @@
-// lib\widgets\common\team_card.dart
-
 import 'package:flutter/material.dart';
 import '../../localization/app_strings.dart';
 import '../../theme/app_colors.dart';
@@ -19,41 +17,30 @@ class TeamCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (teamData == null) {
-      return _buildAddTeamCard(context);
-    }
-    return _buildTeamActivityCard(context);
+    return teamData == null 
+      ? _buildAddTeamCard(context) 
+      : _buildTeamActivityCard(context);
   }
 
   Widget _buildAddTeamCard(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
+    final theme = Theme.of(context);
     
     return GestureDetector(
       onTap: onAddTeam,
       child: Container(
         decoration: BoxDecoration(
-          color: Color.fromRGBO(
-            AppColors.primaryBlue.red,
-            AppColors.primaryBlue.green,
-            AppColors.primaryBlue.blue,
-            0.1
-          ),
-          borderRadius: BorderRadius.circular(10),
+          color: AppColors.primaryBlue.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(ThemeConstants.borderRadius),
           border: Border.all(
-            color: Color.fromRGBO(
-              AppColors.primaryBlue.red,
-              AppColors.primaryBlue.green,
-              AppColors.primaryBlue.blue,
-              0.3
-            ),
-            width: 1
+            color: AppColors.primaryBlue.withValues(alpha: 0.3),
+            width: 1,
           ),
         ),
-        padding: const EdgeInsets.all(20),
+        padding: ThemeConstants.cardPadding,
         child: Center(
           child: Text(
-            AppStrings.addTeam,
-            style: textTheme.titleMedium?.copyWith(
+            AppStrings.get('add_team'),
+            style: theme.textTheme.titleMedium?.copyWith(
               color: AppColors.primaryBlue,
               fontWeight: FontWeight.bold,
             ),
@@ -66,75 +53,83 @@ class TeamCard extends StatelessWidget {
   }
 
   Widget _buildTeamActivityCard(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
     
     return GestureDetector(
       onTap: onViewTeam,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          boxShadow: const [
+          color: theme.cardTheme.color,
+          borderRadius: BorderRadius.circular(ThemeConstants.borderRadius),
+          boxShadow: [
             BoxShadow(
-              color: Color.fromRGBO(0, 0, 0, 0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
-              offset: Offset(0, 4),
+              offset: const Offset(0, 4),
             ),
           ],
         ),
-        padding: const EdgeInsets.all(12),
+        padding: ThemeConstants.cardPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           textDirection: TextDirection.rtl,
           children: [
-            // Team name and last activity in a clean layout without icons
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              textDirection: TextDirection.rtl,
-              children: [
-                Text(
-                  teamData!['name'] ?? '',
-                  style: textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colorScheme.onSurface,
-                  ),
-                  textDirection: TextDirection.rtl,
-                ),
-                SizedBox(height: AppTheme.spacing / 2),
-                Text(
-                  'פעילות אחרונה: ${teamData!['last_activity'] ?? ''}',
-                  style: textTheme.bodySmall,
-                  textDirection: TextDirection.rtl,
-                ),
-              ],
-            ),
-            SizedBox(height: AppTheme.spacingDouble - 4),
-            // Recent activity summary
-            Text(
-              teamData!['activity_summary'] ?? '',
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface,
-              ),
-              textDirection: TextDirection.rtl,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            // Add a "more" button at the bottom
-            SizedBox(height: AppTheme.spacing),
-            Align(
-              alignment: Alignment.bottomLeft,
-              child: Text(
-                'הוסף קבוצה',
-                style: textTheme.labelSmall?.copyWith(
-                  color: AppColors.primaryBlue,
-                  fontWeight: FontWeight.bold,
-                ),
-                textDirection: TextDirection.rtl,
-              ),
-            ),
+            _buildTeamHeader(theme),
+            SizedBox(height: ThemeConstants.sm),
+            _buildActivitySummary(theme),
+            SizedBox(height: ThemeConstants.sm),
+            _buildMoreAction(theme),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildTeamHeader(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      textDirection: TextDirection.rtl,
+      children: [
+        Text(
+          teamData!['name'] ?? '',
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: theme.colorScheme.onSurface,
+          ),
+          textDirection: TextDirection.rtl,
+        ),
+        SizedBox(height: ThemeConstants.sm / 2),
+        Text(
+          'פעילות אחרונה: ${teamData!['last_activity'] ?? ''}',
+          style: theme.textTheme.bodySmall,
+          textDirection: TextDirection.rtl,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActivitySummary(ThemeData theme) {
+    return Text(
+      teamData!['activity_summary'] ?? '',
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: theme.colorScheme.onSurface,
+      ),
+      textDirection: TextDirection.rtl,
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  Widget _buildMoreAction(ThemeData theme) {
+    return Align(
+      alignment: Alignment.bottomLeft,
+      child: Text(
+        'הוסף קבוצה',
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: AppColors.primaryBlue,
+          fontWeight: FontWeight.bold,
+        ),
+        textDirection: TextDirection.rtl,
       ),
     );
   }

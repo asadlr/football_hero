@@ -1,9 +1,14 @@
+//lib\screens\onboarding.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../logger/logger.dart';
 import '../state/onboarding_state.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+
+import '../theme/app_theme.dart';
+import '../theme/app_colors.dart';
+import '../localization/app_strings.dart';
 
 class Onboarding extends StatefulWidget {
   final String userId;
@@ -64,7 +69,7 @@ class _OnboardingState extends State<Onboarding> {
     if (_selectedRole == 'player') return null; // Players are exempt
     
     if (value == null || value.isEmpty) {
-      return 'נא להזין מספר טלפון';
+      return AppStrings.get('phone_label');
     }
     
     // Remove any hyphens for validation
@@ -75,7 +80,7 @@ class _OnboardingState extends State<Onboarding> {
     final phoneRegex = RegExp(r'^0(5[0-9]|[23][0-9])[0-9]{7}$');
     
     if (!phoneRegex.hasMatch(cleanedPhone)) {
-      return 'אנא הזן מספר טלפון תקין (10 ספרות)';
+      return AppStrings.get('phone_hint');
     }
     
     return null;
@@ -105,17 +110,26 @@ class _OnboardingState extends State<Onboarding> {
   
   Future<void> _deleteUserRoleData(String userId, String previousRole) async {
     try {
-      // Remove user from team memberships
+    AppLogger.info(message: 'Attempting to delete role data for user $userId with previous role $previousRole');
+
+    // Existing code for deleting team memberships and community teams
+    try {
       await Supabase.instance.client
           .from('team_members')
           .delete()
           .eq('user_id', userId);
+    } catch (e) {
+      AppLogger.error(message: 'Error deleting team_members: ${e.toString()}');
+    }
 
-      // Remove user from community teams
+    try {
       await Supabase.instance.client
           .from('community_teams')
           .delete()
           .eq('user_id', userId);
+    } catch (e) {
+      AppLogger.error(message: 'Error deleting community_teams: ${e.toString()}');
+    }
 
       // Delete role-specific data
       switch (previousRole) {
@@ -134,7 +148,7 @@ class _OnboardingState extends State<Onboarding> {
                 .delete()
                 .eq('id', userId);
           } catch (e) {
-            AppLogger.info('Legacy players table may have been removed');
+            AppLogger.info(message: 'Legacy players table may have been removed');
           }
           break;
 
@@ -154,7 +168,7 @@ class _OnboardingState extends State<Onboarding> {
                 .delete()
                 .eq('id', userId);
           } catch (e) {
-            AppLogger.info('Legacy coaches table may have been removed');
+            AppLogger.info(message: 'Legacy coaches table may have been removed');
           }
           break;
 
@@ -165,7 +179,7 @@ class _OnboardingState extends State<Onboarding> {
                 .delete()
                 .eq('user_id', userId);
           } catch (e) {
-            AppLogger.info('Legacy community_managers table may have been removed');
+            AppLogger.info(message: 'Legacy community_managers table may have been removed');
           }
           break;
 
@@ -180,7 +194,7 @@ class _OnboardingState extends State<Onboarding> {
                 .delete()
                 .eq('parent_id', userId);
           } catch (e) {
-            AppLogger.info('Legacy parents table may have been removed');
+            AppLogger.info(message: 'Legacy parents table may have been removed');
           }
           break;
 
@@ -199,7 +213,7 @@ class _OnboardingState extends State<Onboarding> {
                 .delete()
                 .eq('id', userId);
           } catch (e) {
-            AppLogger.info('Legacy mentors table may have been removed');
+            AppLogger.info(message: 'Legacy mentors table may have been removed');
           }
           break;
       }
@@ -222,12 +236,12 @@ class _OnboardingState extends State<Onboarding> {
           .delete()
           .eq('user_id', userId);
 
-      AppLogger.info('Successfully deleted previous role data');
+      AppLogger.info(message: 'Successfully deleted previous role data');
     } catch (e) {
-      AppLogger.error('Error deleting previous role data');
-      rethrow;
-    }
+    AppLogger.error(message: 'Comprehensive error in deleting role data: ${e.toString()}');
+    rethrow;
   }
+}
 
   Future<bool> _onWillPop() async {
     if (!mounted) return false;
@@ -235,12 +249,12 @@ class _OnboardingState extends State<Onboarding> {
     final result = await showDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) => AlertDialog(
-        title: const Text('לבטל הרשמה?'),
-        content: const Text('האם את/ה בטוח/ה שברצונך לבטל את ההרשמה? כל הנתונים שהוזנו ימחקו'),
+        title: Text(AppStrings.get('cancel_registration')),
+        content: Text(AppStrings.get('cancel_registration_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('לא'),
+            child: Text(AppStrings.get('no')),
           ),
           TextButton(
             onPressed: () async {
@@ -251,7 +265,7 @@ class _OnboardingState extends State<Onboarding> {
                 context.go('/');
               }
             },
-            child: const Text('כן'),
+            child: Text(AppStrings.get('yes')),
           ),
         ],
       ),
@@ -272,7 +286,7 @@ class _OnboardingState extends State<Onboarding> {
       // Handle auth deletion if needed
       await Supabase.instance.client.auth.signOut();
     } catch (e) {
-      AppLogger.error('Error deleting user data');
+      AppLogger.error(message: 'Error deleting user data');
     }
   }
 
@@ -290,18 +304,18 @@ class _OnboardingState extends State<Onboarding> {
         final validRoles = ['guest', 'player', 'parent', 'coach', 'community_manager', 'mentor', 'admin', 'user'];
         final role = (_selectedRole != null && validRoles.contains(_selectedRole)) ? _selectedRole : 'player';
 
-        AppLogger.info('Submitting role data');
+        AppLogger.info(message: 'Submitting role data');
 
         final phone = _phoneController.text.trim().replaceAll('-', '');
         final previousRole = _onboardingState.role;
         
-        AppLogger.info('Submitting onboarding form');
+        AppLogger.info(message: 'Submitting onboarding form');
 
         if (dob == null) {
-          AppLogger.warning('DOB not selected');
+          AppLogger.warning(message: 'DOB not selected');
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('אנא בחר תאריך לידה')),
+            SnackBar(content: Text(AppStrings.get('dob_validation'))),
           );
           setState(() {
             _isLoading = false;
@@ -312,46 +326,22 @@ class _OnboardingState extends State<Onboarding> {
         final age = DateTime.now().year - dob.year;
 
         if (previousRole != null && role != previousRole) {
-          AppLogger.info('Role change detected');
-          if (!mounted) return;
-          final shouldProceed = await showDialog<bool>(
-            context: context,
-            builder: (BuildContext context) => AlertDialog(
-              title: const Text('שינוי תפקיד'),
-              content: const Text('שינוי התפקיד ימחק את כל הנתונים הקשורים לתפקיד הקודם. האם להמשיך?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(false),
-                  child: const Text('ביטול'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(true),
-                  child: const Text('המשך'),
-                ),
-              ],
-            ),
-          ) ?? false;
-
-          if (!shouldProceed) {
-            setState(() {
-              _isLoading = false;
-              _selectedRole = previousRole;
-            });
-            return;
-          }
-
+          AppLogger.info(message: 'Role change detected: from $previousRole to $role');
+          
           try {
-            AppLogger.info('Starting to delete previous role data');
             await _deleteUserRoleData(userId, previousRole);
+            AppLogger.info(message: 'Successfully deleted previous role data');
           } catch (e) {
-            AppLogger.error('Failed to delete previous role data');
+            AppLogger.error(message: 'Detailed error in role data deletion: ${e.toString()}');
+            
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('שגיאה במחיקת נתוני תפקיד קודם. אנא נסה שוב מאוחר יותר'),
-                duration: Duration(seconds: 5),
+              SnackBar(
+                content: Text(AppStrings.get('unexpected_error')),
+                duration: const Duration(seconds: 5),
               ),
             );
+            
             setState(() {
               _isLoading = false;
               _selectedRole = previousRole;
@@ -361,7 +351,7 @@ class _OnboardingState extends State<Onboarding> {
         }
 
         try {
-          AppLogger.info('Updating user data in database');
+          AppLogger.info(message: 'Updating user data in database');
           final response = await Supabase.instance.client.from('users').upsert({
             'id': userId,
             'name': name,
@@ -374,18 +364,18 @@ class _OnboardingState extends State<Onboarding> {
           });
           
           if (response != null && response.error != null) {
-            AppLogger.error('Supabase Error occurred');
+            AppLogger.error(message: 'Supabase Error occurred');
           } else {
-            AppLogger.info('User data successfully updated');
+            AppLogger.info(message: 'User data successfully updated');
           }
 
         } catch (e) {
-          AppLogger.error('Error updating user data');
+          AppLogger.error(message: 'Error updating user data');
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('שגיאה בעדכון פרטי משתמש. אנא נסה שוב'),
-              duration: Duration(seconds: 5),
+            SnackBar(
+              content: Text(AppStrings.get('unexpected_error')),
+              duration: const Duration(seconds: 5),
             ),
           );
           setState(() {
@@ -405,16 +395,16 @@ class _OnboardingState extends State<Onboarding> {
 
         if (!mounted) return;
         
-        AppLogger.info('Navigating to next screen');
+        AppLogger.info(message: 'Navigating to next screen');
         _navigateBasedOnRole(role, updatedState);
         
       } catch (e) {
-        AppLogger.error('Unexpected error in onboarding submission');
+        AppLogger.error(message: 'Unexpected error in onboarding submission: ${e.toString()}');
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('שגיאה לא צפויה. אנא נסה שוב מאוחר יותר.'),
-            duration: Duration(seconds: 5),
+          SnackBar(
+            content: Text(AppStrings.get('unexpected_error')),
+            duration: const Duration(seconds: 5),
           ),
         );
       } finally {
@@ -429,9 +419,9 @@ class _OnboardingState extends State<Onboarding> {
 
   void _navigateBasedOnRole(String? role, OnboardingState state) {
     if (role == null) {
-      AppLogger.warning('No role selected');
+      AppLogger.warning(message: 'No role selected');
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('סוג משתמש לא נבחר')),
+        SnackBar(content: Text(AppStrings.get('user_type_validation'))),
       );
       return;
     }
@@ -453,15 +443,15 @@ class _OnboardingState extends State<Onboarding> {
       case 'community_manager':
         context.go('/onboarding/community', extra: args);
       default:
-        AppLogger.warning('Unknown role selected');
+        AppLogger.warning(message: 'Unknown role selected');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('סוג משתמש לא ידוע')),
+          SnackBar(content: Text(AppStrings.get('user_type_validation'))),
         );
     }
   }
-
+  
   Future<void> _pickDate() async {
-    AppLogger.info('Opening date picker');
+    AppLogger.info(message: 'Opening date picker');
     final pickedDate = await showDatePicker(
       context: context,
       locale: const Locale('he'),
@@ -478,12 +468,14 @@ class _OnboardingState extends State<Onboarding> {
         _dobController.text = "${pickedDate.day}/${pickedDate.month}/${pickedDate.year}";
       });
     } else {
-      AppLogger.warning('Date picker canceled');
+      AppLogger.warning(message: 'Date picker canceled');
     }
   }
 
   @override
-  Widget build(BuildContext context) {
+    Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -498,7 +490,7 @@ class _OnboardingState extends State<Onboarding> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: BackButton(
-              color: Colors.black,
+              color: AppColors.textPrimary,
               onPressed: () async {
                 await _onWillPop();
               },
@@ -518,7 +510,7 @@ class _OnboardingState extends State<Onboarding> {
                 child: SingleChildScrollView(
                   child: Card(
                     margin: const EdgeInsets.symmetric(horizontal: 20.0),
-                    color: Colors.white.withAlpha(230),
+                    elevation: AppTheme.theme.cardTheme.elevation ?? 4,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15.0),
                     ),
@@ -529,12 +521,10 @@ class _OnboardingState extends State<Onboarding> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Text(
-                              'השלמת הרשמה',
+                            Text(
+                              AppStrings.get('onboarding_title'),
                               textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w300,
+                              style: theme.textTheme.headlineLarge?.copyWith(
                                 fontFamily: 'RubikDirt',
                               ),
                             ),
@@ -543,12 +533,16 @@ class _OnboardingState extends State<Onboarding> {
                               controller: _nameController,
                               enabled: !_isLoading,
                               textAlign: TextAlign.right,
-                              decoration: const InputDecoration(
-                                labelText: 'שמך',
-                                border: OutlineInputBorder(),
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('name_label'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
                               ),
                               validator: (value) =>
-                                  value == null || value.isEmpty ? 'נא להזין שם' : null,
+                                  value == null || value.isEmpty 
+                                  ? AppStrings.get('name_validation') 
+                                  : null,
                             ),
                             const SizedBox(height: 20),
                             TextFormField(
@@ -557,54 +551,87 @@ class _OnboardingState extends State<Onboarding> {
                               readOnly: true,
                               onTap: _pickDate,
                               textAlign: TextAlign.right,
-                              decoration: const InputDecoration(
-                                labelText: 'תאריך לידה',
-                                border: OutlineInputBorder(),
-                                suffixIcon: Icon(Icons.calendar_today),
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('dob_label'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
+                                suffixIcon: const Icon(Icons.calendar_today),
                               ),
                               validator: (value) =>
-                                  value == null || value.isEmpty ? 'נא לבחור תאריך לידה' : null,
+                                  value == null || value.isEmpty 
+                                  ? AppStrings.get('dob_validation') 
+                                  : null,
                             ),
                             const SizedBox(height: 20),
                             DropdownButtonFormField<String>(
-                              decoration: const InputDecoration(
-                                labelText: 'סוג משתמש',
-                                border: OutlineInputBorder(),
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('user_type_label'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
                               ),
                               value: _selectedRole,
-                              onChanged: _isLoading ? null : (value) => setState(() => _selectedRole = value),
-                              items: const [
-                                DropdownMenuItem(value: 'player', child: Text('שחקן')),
-                                DropdownMenuItem(value: 'parent', child: Text('הורה')),
-                                DropdownMenuItem(value: 'coach', child: Text('מאמן')),
-                                DropdownMenuItem(value: 'community_manager', child: Text('צוות קהילתי')),
-                                DropdownMenuItem(value: 'mentor', child: Text('מנטור')),
+                              onChanged: _isLoading 
+                                ? null 
+                                : (value) => setState(() => _selectedRole = value),
+                              items: [
+                                DropdownMenuItem(
+                                  value: 'player', 
+                                  child: Text(AppStrings.get('user_roles.player')),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'parent', 
+                                  child: Text(AppStrings.get('user_roles.parent')),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'coach', 
+                                  child: Text(AppStrings.get('user_roles.coach')),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'community_manager', 
+                                  child: Text(AppStrings.get('user_roles.community_manager')),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'mentor', 
+                                  child: Text(AppStrings.get('user_roles.mentor')),
+                                ),
                               ],
-                              validator: (value) => value == null ? 'נא לבחור סוג משתמש' : null,
+                              validator: (value) => 
+                                value == null 
+                                ? AppStrings.get('user_type_validation') 
+                                : null,
                             ),
                             const SizedBox(height: 20),
                             TextFormField(
                               controller: _addressController,
                               enabled: !_isLoading,
                               textAlign: TextAlign.right,
-                              decoration: const InputDecoration(
-                                labelText: 'כתובת',
-                                border: OutlineInputBorder(),
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('address_label'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
                               ),
                               validator: (value) =>
-                                  value == null || value.isEmpty ? 'נא להזין כתובת' : null,
+                                  value == null || value.isEmpty 
+                                  ? AppStrings.get('address_validation') 
+                                  : null,
                             ),
                             const SizedBox(height: 20),
                             TextFormField(
                               controller: _cityController,
                               enabled: !_isLoading,
                               textAlign: TextAlign.right,
-                              decoration: const InputDecoration(
-                                labelText: 'עיר',
-                                border: OutlineInputBorder(),
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('city_label'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
                               ),
                               validator: (value) =>
-                                  value == null || value.isEmpty ? 'נא להזין עיר' : null,
+                                  value == null || value.isEmpty 
+                                  ? AppStrings.get('city_validation') 
+                                  : null,
                             ),
                             const SizedBox(height: 20),
                             TextFormField(
@@ -612,16 +639,16 @@ class _OnboardingState extends State<Onboarding> {
                               enabled: !_isLoading,
                               textAlign: TextAlign.right,
                               keyboardType: TextInputType.phone,
-                              decoration: const InputDecoration(
-                                labelText: 'מספר טלפון',
-                                hintText: 'הזן מספר טלפון (לדוגמה: 050-1234567)',
-                                border: OutlineInputBorder(),
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('phone_label'),
+                                hintText: AppStrings.get('phone_hint'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
                               ),
                               validator: _validatePhoneNumber,
                               inputFormatters: [
-                                // Allow only numbers and hyphens
                                 FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
-                                // Auto-format phone number with hyphens
                                 _PhoneNumberFormatter(),
                               ],
                             ),
@@ -629,31 +656,28 @@ class _OnboardingState extends State<Onboarding> {
                             ElevatedButton(
                               onPressed: _isLoading ? null : _submitAndNavigate,
                               style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryBlue,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 15.0,
                                 ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30.0),
                                 ),
-                                backgroundColor: Colors.blue,
                               ),
                               child: _isLoading
                                 ? const SizedBox(
                                     height: 20,
                                     width: 20,
                                     child: CircularProgressIndicator(
+                                      color: Colors.white,
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     ),
                                   )
-                                : const Text(
-                                    'שלח',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w300,
-                                      fontStyle: FontStyle.italic,
-                                      fontFamily: 'VarelaRound',
+                                : Text(
+                                    AppStrings.get('submit_button'),
+                                    style: theme.textTheme.labelLarge?.copyWith(
                                       color: Colors.white,
+                                      fontFamily: 'VarelaRound',
                                     ),
                                   ),
                             ),
@@ -669,7 +693,9 @@ class _OnboardingState extends State<Onboarding> {
                   child: Container(
                     color: Colors.black.withAlpha(77),
                     child: const Center(
-                      child: CircularProgressIndicator(),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryBlue,
+                      ),
                     ),
                   ),
                 ),

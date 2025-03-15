@@ -1,8 +1,11 @@
 // lib\screens\login.dart
-
 import 'package:go_router/go_router.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../theme/app_theme.dart';
+import '../theme/app_colors.dart';
+import '../localization/app_strings.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -27,7 +30,7 @@ class _LoginState extends State<Login> {
     if (email.isEmpty || password.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('נא למלא את כל השדות')),
+        SnackBar(content: Text(AppStrings.get('empty_fields_error'))),
       );
       setState(() {
         _isLoading = false;
@@ -53,7 +56,7 @@ class _LoginState extends State<Login> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('שגיאה בהתחברות. אנא נסה שוב מאוחר יותר.')),
+        SnackBar(content: Text(AppStrings.get('login_error'))),
       );
     } finally {
       if (mounted) {
@@ -66,19 +69,21 @@ class _LoginState extends State<Login> {
 
   String _getLocalizedErrorMessage(String errorMessage) {
     if (errorMessage.contains('Invalid login credentials')) {
-      return 'פרטי התחברות שגויים';
+      return AppStrings.get('invalid_credentials');
     } else if (errorMessage.contains('Email not confirmed')) {
-      return 'דוא"ל לא מאומת. אנא בדוק את תיבת הדואר שלך';
+      return AppStrings.get('email_not_confirmed');
     } else if (errorMessage.contains('Too many requests')) {
-      return 'יותר מדי ניסיונות כניסה. אנא נסה שוב מאוחר יותר';
+      return AppStrings.get('too_many_requests');
     }
-    return 'שגיאה בכניסה למערכת. אנא נסה שוב';
+    return AppStrings.get('login_error');
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Directionality(
-      textDirection: TextDirection.rtl, // Enforces RTL layout
+      textDirection: TextDirection.rtl,
       child: Scaffold(
         body: Stack(
           children: [
@@ -107,21 +112,19 @@ class _LoginState extends State<Login> {
                     const SizedBox(height: 150.0),
                     Card(
                       margin: const EdgeInsets.symmetric(horizontal: 20.0),
-                      color: const Color.fromRGBO(255, 255, 255, 0.9), // Adjusted for precision
+                      elevation: AppTheme.theme.cardTheme.elevation ?? 4,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15.0),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(20.0),
                         child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch, // Aligns content properly
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Text(
-                              'כניסה למערכת',
+                            Text(
+                              AppStrings.get('login_screen_title'),
                               textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w300,
+                              style: theme.textTheme.headlineLarge?.copyWith(
                                 fontFamily: 'RubikDirt',
                               ),
                             ),
@@ -129,10 +132,11 @@ class _LoginState extends State<Login> {
                             TextField(
                               controller: _emailController,
                               textAlign: TextAlign.right,
-                              decoration: const InputDecoration(
-                                labelText: 'דוא"ל',
-                                alignLabelWithHint: true,
-                                border: OutlineInputBorder(),
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('email_label'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
                               ),
                             ),
                             const SizedBox(height: 20.0),
@@ -140,16 +144,18 @@ class _LoginState extends State<Login> {
                               controller: _passwordController,
                               textAlign: TextAlign.right,
                               obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: 'סיסמה',
-                                alignLabelWithHint: true,
-                                border: OutlineInputBorder(),
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('password_label'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
                               ),
                             ),
                             const SizedBox(height: 20.0),
                             ElevatedButton(
                               onPressed: _isLoading ? null : _login,
                               style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryBlue,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 50.0,
                                   vertical: 15.0,
@@ -157,22 +163,19 @@ class _LoginState extends State<Login> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30.0),
                                 ),
-                                backgroundColor: Colors.blue,
                               ),
                               child: _isLoading
                                 ? const SizedBox(
                                     height: 20,
                                     width: 20,
                                     child: CircularProgressIndicator(
+                                      color: Colors.white,
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     ),
                                   )
-                                : const Text(
-                                  'כניסה',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w300,
+                                : Text(
+                                  AppStrings.get('login_button_text'),
+                                  style: theme.textTheme.labelLarge?.copyWith(
                                     color: Colors.white,
                                     fontFamily: 'RubikDirt',
                                   ),
@@ -181,13 +184,12 @@ class _LoginState extends State<Login> {
                             const SizedBox(height: 10.0),
                             GestureDetector(
                               onTap: () => context.push('/forgot-password'),
-                              child: const Text(
-                                'שכחת סיסמה?',
+                              child: Text(
+                                AppStrings.get('forgot_password'),
                                 textAlign: TextAlign.center,
-                                style: TextStyle(
+                                style: theme.textTheme.bodyMedium?.copyWith(
                                   decoration: TextDecoration.underline,
-                                  fontFamily: 'VarelaRound',
-                                  fontSize: 16,
+                                  color: AppColors.primaryBlue,
                                 ),
                               ),
                             ),
@@ -204,7 +206,9 @@ class _LoginState extends State<Login> {
                 child: Container(
                   color: Colors.black.withOpacity(0.3),
                   child: const Center(
-                    child: CircularProgressIndicator(),
+                    child: CircularProgressIndicator(
+                      color: AppColors.primaryBlue,
+                    ),
                   ),
                 ),
               ),

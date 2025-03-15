@@ -1,8 +1,13 @@
+//lib\screens\signup.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
+
 import '../logger/logger.dart';
 import '../state/onboarding_state.dart';
-import 'package:go_router/go_router.dart';
+import '../theme/app_theme.dart';
+import '../theme/app_colors.dart';
+import '../localization/app_strings.dart';
 
 class Signup extends StatefulWidget {
   const Signup({super.key});
@@ -22,19 +27,19 @@ class _SignupState extends State<Signup> {
   // Password validation - added better security checks
   String? _validatePassword(String password) {
     if (password.isEmpty) {
-      return 'נא להזין סיסמה';
+      return AppStrings.get('password_too_short');
     }
     if (password.length < 8) {
-      return 'הסיסמה חייבת להיות באורך של 8 תווים לפחות';
+      return AppStrings.get('password_too_short');
     }
     if (!password.contains(RegExp(r'[A-Z]'))) {
-      return 'הסיסמה חייבת להכיל לפחות אות גדולה אחת';
+      return AppStrings.get('password_needs_uppercase');
     }
     if (!password.contains(RegExp(r'[0-9]'))) {
-      return 'הסיסמה חייבת להכיל לפחות ספרה אחת';
+      return AppStrings.get('password_needs_number');
     }
     if (!password.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
-      return 'הסיסמה חייבת להכיל לפחות תו מיוחד אחד';
+      return AppStrings.get('password_needs_special_char');
     }
     return null;
   }
@@ -46,7 +51,7 @@ class _SignupState extends State<Signup> {
 
   Future<void> signup() async {
     setState(() {
-      _isLoading = true; // Set loading state
+      _isLoading = true;
     });
     
     try {
@@ -57,7 +62,7 @@ class _SignupState extends State<Signup> {
       // Validation checks
       if (email.isEmpty || !email.contains('@')) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('אנא הזן כתובת דוא"ל תקינה')),
+          SnackBar(content: Text(AppStrings.get('invalid_email'))),
         );
         setState(() { _isLoading = false; });
         return;
@@ -75,7 +80,7 @@ class _SignupState extends State<Signup> {
 
       if (password != confirmPassword) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('הסיסמאות אינן תואמות')),
+          SnackBar(content: Text(AppStrings.get('passwords_not_matching'))),
         );
         setState(() { _isLoading = false; });
         return;
@@ -83,13 +88,13 @@ class _SignupState extends State<Signup> {
 
       if (!isTermsAccepted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('אנא אשר את תנאי השימוש')),
+          SnackBar(content: Text(AppStrings.get('terms_acceptance'))),
         );
         setState(() { _isLoading = false; });
         return;
       }
 
-      AppLogger.info('Starting signup process');
+      AppLogger.info(message: 'Starting signup process');
 
       final supabase = Supabase.instance.client;
 
@@ -108,12 +113,12 @@ class _SignupState extends State<Signup> {
         final user = authResponse.user;
 
         if (user == null) {
-          AppLogger.error('Signup failed: No user returned');
+          AppLogger.error(message: 'Signup failed: No user returned');
           throw 'Signup failed: No user returned';
         }
 
         userId = user.id;
-        AppLogger.info('User created successfully');
+        AppLogger.info(message: 'User created successfully');
 
         // Create onboarding state
         final onboardingState = OnboardingState(email: email);
@@ -124,7 +129,7 @@ class _SignupState extends State<Signup> {
             'userId': userId,
             'onboardingState': onboardingState,
           });
-          AppLogger.info('Navigation completed');
+          AppLogger.info(message: 'Navigation completed');
         }
 
       } on AuthException catch (e) {
@@ -132,7 +137,7 @@ class _SignupState extends State<Signup> {
         if (e.message.toLowerCase().contains('user already registered')) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('משתמש זה כבר רשום במערכת')),
+              SnackBar(content: Text(AppStrings.get('user_already_registered'))),
             );
           }
           setState(() { _isLoading = false; });
@@ -142,22 +147,22 @@ class _SignupState extends State<Signup> {
         // Handle other auth exceptions with generic message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('שגיאה ביצירת המשתמש. אנא נסה שוב.')),
+            SnackBar(content: Text(AppStrings.get('signup_create_error'))),
           );
         }
       }
     } catch (e) {
-      AppLogger.error('Unexpected error during signup');
+      AppLogger.error(message: 'Unexpected error during signup');
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('שגיאה בלתי צפויה. אנא נסה שוב מאוחר יותר.')),
+          SnackBar(content: Text(AppStrings.get('signup_unexpected_error'))),
         );
       }
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false; // Reset loading state
+          _isLoading = false;
         });
       }
     }
@@ -165,6 +170,8 @@ class _SignupState extends State<Signup> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -179,7 +186,7 @@ class _SignupState extends State<Signup> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: BackButton(
-              color: Colors.black,
+              color: AppColors.textPrimary,
               onPressed: () {
                 onWillPop();
               },
@@ -199,7 +206,7 @@ class _SignupState extends State<Signup> {
                 child: SingleChildScrollView(
                   child: Card(
                     margin: const EdgeInsets.symmetric(horizontal: 20.0),
-                    color: const Color.fromRGBO(255, 255, 255, 0.9),
+                    elevation: AppTheme.theme.cardTheme.elevation ?? 4,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(15.0),
                     ),
@@ -208,31 +215,34 @@ class _SignupState extends State<Signup> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Text(
-                            'הרשמה',
+                          Text(
+                            AppStrings.get('signup_screen_title'),
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w300,
+                            style: theme.textTheme.headlineLarge?.copyWith(
                               fontFamily: 'RubikDirt',
                             ),
                           ),
                           const SizedBox(height: 20.0),
                           TextField(
                             controller: emailController,
-                            decoration: const InputDecoration(
-                              labelText: 'דוא"ל',
-                              border: OutlineInputBorder(),
+                            style: theme.textTheme.bodyLarge,
+                            decoration: InputDecoration(
+                              labelText: AppStrings.get('email_hint'),
+                              labelStyle: theme.textTheme.bodyMedium,
+                              border: const OutlineInputBorder(),
                             ),
                           ),
                           const SizedBox(height: 20.0),
                           TextField(
                             controller: passwordController,
                             obscureText: true,
-                            decoration: const InputDecoration(
-                              labelText: 'סיסמה',
-                              border: OutlineInputBorder(),
-                              helperText: '8 תווים לפחות, אות גדולה, ספרה ותו מיוחד',
+                            style: theme.textTheme.bodyLarge,
+                            decoration: InputDecoration(
+                              labelText: AppStrings.get('password_hint'),
+                              labelStyle: theme.textTheme.bodyMedium,
+                              border: const OutlineInputBorder(),
+                              helperText: AppStrings.get('password_requirements'),
+                              helperStyle: theme.textTheme.bodySmall,
                               helperMaxLines: 2,
                             ),
                           ),
@@ -240,9 +250,11 @@ class _SignupState extends State<Signup> {
                           TextField(
                             controller: confirmPasswordController,
                             obscureText: true,
-                            decoration: const InputDecoration(
-                              labelText: 'אימות סיסמה',
-                              border: OutlineInputBorder(),
+                            style: theme.textTheme.bodyLarge,
+                            decoration: InputDecoration(
+                              labelText: AppStrings.get('confirm_password_hint'),
+                              labelStyle: theme.textTheme.bodyMedium,
+                              border: const OutlineInputBorder(),
                             ),
                           ),
                           const SizedBox(height: 20.0),
@@ -250,17 +262,17 @@ class _SignupState extends State<Signup> {
                             children: [
                               Checkbox(
                                 value: isTermsAccepted,
+                                activeColor: AppColors.primaryBlue,
                                 onChanged: (value) {
                                   setState(() {
                                     isTermsAccepted = value!;
                                   });
                                 },
                               ),
-                              const Expanded(
+                              Expanded(
                                 child: Text(
-                                  'אני מסכים/ה לתנאי השימוש',
-                                  style: TextStyle(
-                                    fontFamily: 'VarelaRound',
+                                  AppStrings.get('terms_acceptance'),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
                                     fontStyle: FontStyle.italic,
                                   ),
                                 ),
@@ -271,6 +283,7 @@ class _SignupState extends State<Signup> {
                           ElevatedButton(
                             onPressed: _isLoading ? null : signup,
                             style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primaryBlue,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 50.0,
                                 vertical: 15.0,
@@ -278,7 +291,6 @@ class _SignupState extends State<Signup> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(30.0),
                               ),
-                              backgroundColor: Colors.blue,
                             ),
                             child: _isLoading
                               ? const SizedBox(
@@ -286,12 +298,10 @@ class _SignupState extends State<Signup> {
                                   width: 20,
                                   child: CircularProgressIndicator(color: Colors.white)
                                 )
-                              : const Text(
-                                'יצירת חשבון',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w300,
-                                  fontStyle: FontStyle.italic,
+                              : Text(
+                                AppStrings.get('signup_button_text'),
+                                style: theme.textTheme.labelLarge?.copyWith(
+                                  color: Colors.white,
                                   fontFamily: 'VarelaRound',
                                 ),
                             ),
@@ -307,7 +317,9 @@ class _SignupState extends State<Signup> {
                   child: Container(
                     color: Colors.black.withAlpha(77),
                     child: const Center(
-                      child: CircularProgressIndicator(),
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryBlue,
+                      ),
                     ),
                   ),
                 ),

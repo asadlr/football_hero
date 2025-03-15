@@ -1,72 +1,74 @@
-// lib\widgets\common\custom_card.dart
-
+// lib/widgets/common/custom_card.dart
 import 'package:flutter/material.dart';
+import '../../theme/app_colors.dart';
 import '../../theme/app_theme.dart';
+import '../../localization/localization_manager.dart';
 
 class CustomCard extends StatelessWidget {
-  final String title;
+  final String? title;
   final Widget child;
-  final double height;
-  final EdgeInsetsGeometry padding;
   final Color? backgroundColor;
-  final Gradient? gradient;
-  final double borderRadius;
+  final double? height;
+  final VoidCallback? onTap;
+  final AppRole? role;
+  final double? borderRadius;
 
   const CustomCard({
     super.key,
-    required this.title,
+    this.title,
     required this.child,
-    this.height = 180,
-    this.padding = const EdgeInsets.all(16.0),
     this.backgroundColor,
-    this.gradient,
-    this.borderRadius = 15.0,
+    this.height,
+    this.onTap,
+    this.role,
+    this.borderRadius,
   });
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final localizationManager = LocalizationManager();
     
-    // Use AppTheme for standard card styling
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      height: height,
-      decoration: BoxDecoration(
-        color: gradient == null 
-            ? AppTheme.applyCardOpacity(backgroundColor ?? Colors.white)
-            : null,
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(borderRadius),
-        boxShadow: const [
-          BoxShadow(
-            color: Color.fromRGBO(0, 0, 0, 0.08),
-            blurRadius: 10,
-            offset: Offset(0, 4),
+    // Determine background color based on role or default
+    final cardColor = backgroundColor ?? 
+      (role != null 
+        ? AppColors.withOpacity(AppColors.getRoleColor(role!), 0.1)
+        : theme.cardTheme.color);
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        color: cardColor,
+        elevation: theme.cardTheme.elevation,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(
+            borderRadius ?? ThemeConstants.borderRadius
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        textDirection: TextDirection.rtl, // RTL support
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0, top: 16.0, left: 16.0), // RTL padding
-            child: Text(
-              title,
-              style: textTheme.headlineSmall?.copyWith(
-                color: colorScheme.onSurface,
-              ),
-              textDirection: TextDirection.rtl, // RTL support
-            ),
+        ),
+        margin: ThemeConstants.cardMargin,
+        child: Container(
+          height: height,
+          padding: ThemeConstants.cardPadding,
+          child: Column(
+            crossAxisAlignment: localizationManager.isRTL 
+                ? CrossAxisAlignment.end 
+                : CrossAxisAlignment.start,
+            children: [
+              if (title != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text(
+                    title!,
+                    style: theme.textTheme.titleMedium,
+                    textAlign: localizationManager.isRTL 
+                        ? TextAlign.right 
+                        : TextAlign.left,
+                  ),
+                ),
+              Expanded(child: child),
+            ],
           ),
-          Expanded(
-            child: Padding(
-              padding: padding,
-              child: child,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

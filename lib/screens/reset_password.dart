@@ -1,6 +1,11 @@
+//lib\screens\reset_password.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
+
+import '../theme/app_theme.dart';
+import '../theme/app_colors.dart';
+import '../localization/app_strings.dart';
 
 class ResetPasswordScreen extends StatefulWidget {
   final String accessToken;
@@ -19,25 +24,18 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   
   bool isLoading = false;
   String? errorMessage;
-  bool isSuccess = false;
   bool isSessionRecovered = false;
 
   @override
   void initState() {
     super.initState();
-    // Removed sensitive token logging
-    
-    // Attempt to verify the OTP token
     _verifyResetToken();
   }
 
   Future<void> _verifyResetToken() async {
     try {
-      // For type safety, make sure the token is treated as a string
       String tokenStr = widget.accessToken.toString();
       
-      // The token is used directly in the password reset process
-      // For testing purposes, we'll just validate it's present
       if (tokenStr.isNotEmpty) {
         setState(() {
           isSessionRecovered = true;
@@ -46,20 +44,18 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         throw Exception('Empty token');
       }
     } catch (error) {
-      // Removed sensitive error logging
       setState(() {
-        errorMessage = 'שגיאה באימות הקישור. אנא נסה לאפס סיסמה שוב.';
+        errorMessage = AppStrings.get('token_verification_error');
         isSessionRecovered = false;
       });
     }
   }
 
-
-  Future<void> updatePassword() async {
+  Future<void> _updatePassword() async {
     // Validate session recovery first
     if (!isSessionRecovered) {
       setState(() {
-        errorMessage = 'לא ניתן לאפס סיסמה. אנא נסה שוב.';
+        errorMessage = AppStrings.get('token_verification_error');
       });
       return;
     }
@@ -74,54 +70,56 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     final email = emailController.text.trim();
     if (email.isEmpty || !email.contains('@')) {
       setState(() {
-        errorMessage = "נא להזין כתובת דוא\"ל תקינה";
+        errorMessage = AppStrings.get('invalid_email');
         isLoading = false;
       });
       return;
     }
 
-    // Validate password match and strength
-    if (passwordController.text.isEmpty) {
+    // Validate password
+    final password = passwordController.text.trim();
+    final confirmPassword = confirmPasswordController.text.trim();
+
+    if (password.isEmpty) {
       setState(() {
-        errorMessage = "נא להזין סיסמה חדשה";
+        errorMessage = AppStrings.get('password_needs_special_char');
         isLoading = false;
       });
       return;
     }
 
-    if (passwordController.text != confirmPasswordController.text) {
+    if (password != confirmPassword) {
       setState(() {
-        errorMessage = "הסיסמאות אינן תואמות";
+        errorMessage = AppStrings.get('passwords_not_matching');
         isLoading = false;
       });
       return;
     }
 
-    if (passwordController.text.length < 6) {
+    if (password.length < 8) {
       setState(() {
-        errorMessage = "הסיסמה צריכה להיות באורך של 6 תווים לפחות";
+        errorMessage = AppStrings.get('password_too_short');
         isLoading = false;
       });
       return;
     }
 
     try {
-      // Step 1: Try to use the token to verify and set a new session
-      // This is required before we can update the user password
+      // Verify and set new session
       final res = await supabase.auth.verifyOTP(
-        email: email, // Add the email here
+        email: email,
         token: widget.accessToken,
         type: OtpType.recovery,
       );
 
       if (res.session == null) {
-        throw Exception('Failed to verify token');
+        throw Exception(AppStrings.get('token_invalid'));
       }
       
-      // Step 2: Now we have a valid session, update the password
+      // Update password
       final updateRes = await supabase.auth.updateUser(
         UserAttributes(
-          password: passwordController.text.trim(),
+          password: password,
         ),
       );
       
@@ -131,15 +129,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       
       setState(() {
         isLoading = false;
-        isSuccess = true;
       });
 
       // Show success message
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("הסיסמה עודכנה בהצלחה!"),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: Text(AppStrings.get('password_reset_success')),
+          backgroundColor: AppColors.primaryGreen,
         ),
       );
       
@@ -155,34 +152,33 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         errorMessage = _getLocalizedErrorMessage(authError);
         isLoading = false;
       });
-      // Removed sensitive auth error logging
     } catch (error) {
       setState(() {
-        errorMessage = "שגיאה בעת איפוס הסיסמה. אנא נסה שוב."; // Generic error message
+        errorMessage = AppStrings.get('unexpected_error');
         isLoading = false;
       });
-      // Removed sensitive error logging
     }
   }
-  
   
   String _getLocalizedErrorMessage(AuthException error) {
     switch (error.message) {
       case 'Invalid session':
-        return 'פג תוקף ההתחברות. אנא נסה לאפס סיסמה שוב.';
+        return AppStrings.get('token_verification_error');
       case 'User not found':
-        return 'המשתמש לא נמצא. אנא בדוק את הפרטים.';
+        return AppStrings.get('user_not_found');
       case 'Password is too short':
-        return 'הסיסמה צריכה להיות באורך של 6 תווים לפחות.';
+        return AppStrings.get('password_too_short');
       case 'invalid flow state, no valid flow state found':
-        return 'קישור האיפוס פג תוקף. אנא בקש קישור איפוס סיסמה חדש.';
+        return AppStrings.get('token_invalid');
       default:
-        return 'שגיאה בעדכון הסיסמה. אנא נסה שוב.'; // Generic error message
+        return AppStrings.get('unexpected_error');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
@@ -213,7 +209,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                     const SizedBox(height: 150.0),
                     Card(
                       margin: const EdgeInsets.symmetric(horizontal: 20.0),
-                      color: const Color.fromRGBO(255, 255, 255, 0.9),
+                      elevation: AppTheme.theme.cardTheme.elevation ?? 4,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(15.0),
                       ),
@@ -222,31 +218,29 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            const Text(
-                              'איפוס סיסמה',
+                            Text(
+                              AppStrings.get('reset_password_title'),
                               textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w300,
+                              style: theme.textTheme.headlineLarge?.copyWith(
                                 fontFamily: 'RubikDirt',
                               ),
                             ),
                             const SizedBox(height: 20.0),
-                            const Text(
-                              "הזן סיסמה חדשה לחשבונך",
+                            Text(
+                              AppStrings.get('reset_password_subtitle'),
                               textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 16),
+                              style: theme.textTheme.bodyMedium,
                             ),
                             const SizedBox(height: 20.0),
-                            // Add email field here
                             TextField(
                               controller: emailController,
                               textAlign: TextAlign.right,
                               keyboardType: TextInputType.emailAddress,
-                              decoration: const InputDecoration(
-                                labelText: 'דוא"ל',
-                                alignLabelWithHint: true,
-                                border: OutlineInputBorder(),
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('email_label'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
                               ),
                               textDirection: TextDirection.ltr,
                             ),
@@ -255,10 +249,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                               controller: passwordController,
                               textAlign: TextAlign.right,
                               obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: 'סיסמה חדשה',
-                                alignLabelWithHint: true,
-                                border: OutlineInputBorder(),
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('new_password'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
                               ),
                               textDirection: TextDirection.ltr,
                             ),
@@ -267,10 +262,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                               controller: confirmPasswordController,
                               textAlign: TextAlign.right,
                               obscureText: true,
-                              decoration: const InputDecoration(
-                                labelText: 'אישור סיסמה',
-                                alignLabelWithHint: true,
-                                border: OutlineInputBorder(),
+                              style: theme.textTheme.bodyLarge,
+                              decoration: InputDecoration(
+                                labelText: AppStrings.get('confirm_password'),
+                                labelStyle: theme.textTheme.bodyMedium,
+                                border: const OutlineInputBorder(),
                               ),
                               textDirection: TextDirection.ltr,
                             ),
@@ -279,14 +275,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 padding: const EdgeInsets.only(top: 16),
                                 child: Text(
                                   errorMessage!,
-                                  style: const TextStyle(color: Colors.red),
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.primaryRed,
+                                  ),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
                             const SizedBox(height: 20.0),
                             ElevatedButton(
-                              onPressed: isLoading || !isSessionRecovered ? null : updatePassword,
+                              onPressed: isLoading || !isSessionRecovered ? null : _updatePassword,
                               style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryBlue,
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 50.0,
                                   vertical: 15.0,
@@ -294,22 +293,19 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30.0),
                                 ),
-                                backgroundColor: Colors.blue,
                               ),
                               child: isLoading
                                 ? const SizedBox(
                                     height: 20,
                                     width: 20,
                                     child: CircularProgressIndicator(
+                                      color: Colors.white,
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                                     ),
                                   )
-                                : const Text(
-                                    'אפס סיסמה',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w300,
+                                : Text(
+                                    AppStrings.get('reset_password_button'),
+                                    style: theme.textTheme.labelLarge?.copyWith(
                                       color: Colors.white,
                                       fontFamily: 'RubikDirt',
                                     ),

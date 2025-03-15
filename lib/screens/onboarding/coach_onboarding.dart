@@ -1,3 +1,5 @@
+// lib\screens\onboarding\coach_onboarding.dart
+
 import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -75,7 +77,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
             });
           }
         } catch (e) {
-          AppLogger.error('Error verifying team');
+          AppLogger.error(message: 'Error verifying team');
           if (mounted) {
             setState(() {
               _isTeamValid = false;
@@ -99,7 +101,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
           .maybeSingle();
       return response != null;
     } catch (e) {
-      AppLogger.error('Error verifying team');
+      AppLogger.error(message: 'Error verifying team');
       return false;
     }
   }
@@ -134,7 +136,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
         });
       }
     } catch (e) {
-      AppLogger.error('Error picking file');
+      AppLogger.error(message: 'Error picking file');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('אירעה שגיאה בבחירת הקובץ. אנא נסה שוב.')),
@@ -221,7 +223,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
                 'created_by': _userId
               });
           } catch (teamError) {
-            AppLogger.error('Error associating coach with team');
+            AppLogger.error(message: 'Error associating coach with team');
             // Don't rethrow since this isn't critical to proceed
           }
         }
@@ -242,7 +244,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
           });
         }
       } catch (e) {
-        AppLogger.error('Error during coach onboarding');
+        AppLogger.error(message: 'Error during coach onboarding');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('אירעה שגיאה בעיבוד הבקשה. אנא נסה שוב.')),
@@ -285,7 +287,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
 
       return response['id'] as String?;
     } catch (e) {
-      AppLogger.error('Error fetching team ID');
+      AppLogger.error(message: 'Error fetching team ID');
       return null;
     }
   }
@@ -431,7 +433,7 @@ class _CoachOnboardingState extends State<CoachOnboarding> {
                     final List<dynamic> data = response as List<dynamic>;
                     return data.map<String>((team) => team['name'] as String);
                   } catch (error) {
-                    AppLogger.error('Error fetching teams');
+                    AppLogger.error(message: 'Error fetching teams');
                     return const Iterable<String>.empty();
                   }
                 },

@@ -1,7 +1,6 @@
-// lib\widgets\common\achievement_box.dart
-
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
 
 class AchievementBox extends StatelessWidget {
   final String title;
@@ -21,18 +20,21 @@ class AchievementBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final Color bgColor = gradient == null 
-        ? Color.fromRGBO(color.red, color.green, color.blue, 0.1)
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+    
+    // Determine background color with improved color handling
+    final backgroundColor = gradient == null 
+        ? color.withOpacity(0.1)
         : Colors.transparent;
-        
+
     return Container(
-      width: 90, // Make the box a bit smaller
-      height: 90, // Make the box a bit smaller
+      width: 90,
+      height: 90,
       decoration: BoxDecoration(
         gradient: gradient,
-        color: gradient == null ? bgColor : null,
-        borderRadius: BorderRadius.circular(12),
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(ThemeConstants.borderRadius),
       ),
       padding: const EdgeInsets.all(6),
       child: Column(
@@ -41,22 +43,22 @@ class AchievementBox extends StatelessWidget {
           Icon(
             icon,
             color: color,
-            size: AppTheme.iconSizeSmall + 6, // 22
+            size: ThemeConstants.iconMedium,
           ),
-          SizedBox(height: AppTheme.spacing - 2), // 6
+          SizedBox(height: ThemeConstants.sm - 2),
           Text(
             value,
             style: textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
+              color: theme.colorScheme.onSurface,
             ),
             textDirection: TextDirection.rtl,
           ),
-          SizedBox(height: AppTheme.spacing - 5), // 3
+          SizedBox(height: ThemeConstants.sm - 5),
           Text(
             title,
             style: textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.8),
+              color: theme.colorScheme.onSurface.withOpacity(0.8),
             ),
             textDirection: TextDirection.rtl,
             textAlign: TextAlign.center,

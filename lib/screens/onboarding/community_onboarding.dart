@@ -1,8 +1,14 @@
+// lib\screens\onboarding\community_onboarding.dart
+
 import 'package:flutter/material.dart';
 import '../../logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../state/onboarding_state.dart';
+import '../../theme/app_theme.dart';
+import '../../theme/app_colors.dart';
+import '../../localization/app_strings.dart';
+import '../../localization/localization_manager.dart';
 
 class CommunityManagerOnboarding extends StatefulWidget {
   final String userId;
@@ -27,8 +33,6 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
   final TextEditingController _communityNameController = TextEditingController();
   bool _isCommunityValid = true;
   bool _isInitialized = false;
-
-  static const Color alternateThemeColor = Color(0xFFE0E3E7);
 
   @override
   void initState() {
@@ -72,7 +76,7 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
       
       return response['community_id'] as String?;
     } catch (e) {
-      AppLogger.error('Error getting community ID for team');
+      AppLogger.error(message: 'Error getting community ID for team');
       return null;
     }
   }
@@ -91,7 +95,7 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
       
       return response['id'] as String;
     } catch (e) {
-      AppLogger.error('Error creating new community');
+      AppLogger.error(message: 'Error creating new community');
       throw Exception('Failed to create new community');
     }
   }
@@ -106,7 +110,7 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
             'created_at': DateTime.now().toIso8601String()
           });
     } catch (e) {
-      AppLogger.error('Error associating team with community');
+      AppLogger.error(message: 'Error associating team with community');
       throw Exception('Failed to associate team with community');
     }
   }
@@ -131,7 +135,7 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
           if (teamId == null) {
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('הקבוצה שהוזנה לא נמצאה במערכת')),
+              SnackBar(content: Text(AppStrings.get('team_not_found'))),
             );
             setState(() {
               _isLoading = false;
@@ -170,7 +174,7 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
                   'created_at': DateTime.now().toIso8601String()
                 });
           } catch (e) {
-            AppLogger.warning('Error creating community_teams relationship');
+            AppLogger.warning(message: 'Error creating community_teams relationship');
             // Continue since this is not a critical error
           }
         }
@@ -188,10 +192,10 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
           });
         }
       } catch (e) {
-        AppLogger.error('Error during community manager onboarding');
+        AppLogger.error(message: 'Error during community manager onboarding');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('אירעה שגיאה בעיבוד הבקשה. אנא נסה שוב.')),
+            SnackBar(content: Text(AppStrings.get('unexpected_error'))),
           );
           setState(() {
             _isLoading = false;
@@ -231,13 +235,16 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
 
       return response['id'] as String?;
     } catch (e) {
-      AppLogger.error('Error fetching team ID');
+      AppLogger.error(message: 'Error fetching team ID');
       return null;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final localizationManager = LocalizationManager();
+    
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -246,13 +253,13 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
         }
       },
       child: Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: localizationManager.textDirection,
         child: Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: BackButton(
-              color: Colors.black,
+              color: AppColors.textPrimary,
               onPressed: _handleBack,
             ),
           ),
@@ -266,64 +273,57 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
                 ),
               ),
               Center(
-                child: Container(
+                child: Card(
                   margin: const EdgeInsets.all(18.0),
-                  padding: const EdgeInsets.all(18.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(230),
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Text(
-                          'מנהל קהילה - שלב ההרשמה',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                  elevation: AppTheme.theme.cardTheme.elevation,
+                  shape: AppTheme.theme.cardTheme.shape,
+                  child: Padding(
+                    padding: const EdgeInsets.all(18.0),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            AppStrings.get('community_manager_registration_title'),
+                            style: theme.textTheme.headlineMedium,
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        Form(
-                          key: _formKey,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _buildIdNumberField(),
-                              const SizedBox(height: 20),
-                              _buildTeamNameField(),
-                              const SizedBox(height: 20),
-                              ElevatedButton(
-                                onPressed: _isLoading ? null : _submitAndNavigate,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.blue,
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                child: _isLoading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                        strokeWidth: 2,
+                          const SizedBox(height: ThemeConstants.md),
+                          Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _buildIdNumberField(theme),
+                                const SizedBox(height: ThemeConstants.md),
+                                _buildTeamNameField(theme),
+                                const SizedBox(height: ThemeConstants.md),
+                                ElevatedButton(
+                                  onPressed: _isLoading ? null : _submitAndNavigate,
+                                  style: theme.elevatedButtonTheme.style,
+                                  child: _isLoading
+                                    ? const SizedBox(
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : Text(
+                                        AppStrings.get('continue_button'),
+                                        style: theme.textTheme.labelLarge?.copyWith(
+                                          color: Colors.white,
+                                        ),
                                       ),
-                                    )
-                                  : const Text(
-                                      'המשך',
-                                      style: TextStyle(fontSize: 15, color: Colors.white),
-                                    ),
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -332,8 +332,10 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
                 Positioned.fill(
                   child: Container(
                     color: Colors.black.withAlpha(77),
-                    child: const Center(
-                      child: CircularProgressIndicator(),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.communityColor,
+                      ),
                     ),
                   ),
                 ),
@@ -344,57 +346,66 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
     );
   }
 
-  Widget _buildIdNumberField() {
+  Widget _buildIdNumberField(ThemeData theme) {
     if (!_isInitialized) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(
+          color: AppColors.communityColor,
+        ),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'מספר תעודת זהות:',
-          style: TextStyle(fontSize: 15),
+        Text(
+          AppStrings.get('personal_id_label'),
+          style: theme.textTheme.bodyLarge,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: ThemeConstants.sm),
         TextFormField(
           controller: _idNumberController,
-          decoration: const InputDecoration(
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
             filled: true,
-            fillColor: alternateThemeColor,
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            fillColor: AppColors.background,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             isDense: true,
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'נא להזין מספר תעודת זהות';
+              return AppStrings.get('personal_id_required');
             }
             if (value.length != 9) {
-              return 'מספר תעודת זהות חייב להכיל 9 ספרות';
+              return AppStrings.get('personal_id_length');
             }
             return null;
           },
           keyboardType: TextInputType.number,
           maxLength: 9,
+          style: theme.textTheme.bodyMedium,
         ),
       ],
     );
   }
 
-  Widget _buildTeamNameField() {
+  Widget _buildTeamNameField(ThemeData theme) {
     if (!_isInitialized) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: CircularProgressIndicator(
+          color: AppColors.communityColor,
+        ),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'הקבוצה שלך: (אופציונלי)',
-          style: TextStyle(fontSize: 15),
+        Text(
+          AppStrings.get('your_team_optional'),
+          style: theme.textTheme.bodyLarge,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: ThemeConstants.sm),
         Autocomplete<String>(
           initialValue: TextEditingValue(text: _communityNameController.text),
           optionsBuilder: (TextEditingValue textEditingValue) async {
@@ -412,7 +423,7 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
               final List<dynamic> data = response as List<dynamic>;
               return data.map<String>((team) => team['name'] as String);
             } catch (error) {
-              AppLogger.error('Error fetching teams');
+              AppLogger.error(message: 'Error fetching teams');
               return const Iterable<String>.empty();
             }
           },
@@ -437,12 +448,12 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
             return TextFormField(
               controller: fieldController,
               focusNode: fieldFocusNode,
-              decoration: const InputDecoration(
-                labelText: 'שם הקבוצה',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: AppStrings.get('team_name'),
+                border: const OutlineInputBorder(),
                 filled: true,
-                fillColor: alternateThemeColor,
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                fillColor: AppColors.background,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 isDense: true,
               ),
               onChanged: (value) {
@@ -459,10 +470,11 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
               },
               validator: (value) {
                 if (value?.isNotEmpty == true && !_isCommunityValid) {
-                  return 'יש לבחור קבוצה מהרשימה';
+                  return AppStrings.get('select_team_from_list');
                 }
                 return null;
               },
+              style: theme.textTheme.bodyMedium,
             );
           },
           optionsViewBuilder: (
@@ -495,14 +507,10 @@ class _CommunityManagerOnboardingState extends State<CommunityManagerOnboarding>
             );
           },
         ),
-        const SizedBox(height: 8),
-        const Text(
-          'השאר/י ריק במידה ואין לך קבוצה או שהקבוצה לא נמצאת',
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.black,
-            fontStyle: FontStyle.italic,
-          ),
+        const SizedBox(height: ThemeConstants.sm),
+        Text(
+          AppStrings.get('leave_empty_if_no_team'),
+          style: theme.textTheme.bodySmall,
         ),
       ],
     );

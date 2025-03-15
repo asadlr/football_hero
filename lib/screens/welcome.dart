@@ -1,6 +1,11 @@
+//lib\screens\welcome.dart
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:go_router/go_router.dart';
+
+import '../theme/app_theme.dart';
+import '../theme/app_colors.dart';
+import '../localization/app_strings.dart';
 
 class Welcome extends StatelessWidget {
   const Welcome({super.key});
@@ -19,23 +24,23 @@ class Welcome extends StatelessWidget {
       if (await canLaunchUrl(url)) {
         await launchUrl(url, mode: LaunchMode.externalApplication);
       } else {
-        // Show a user-friendly error without exposing the URL
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('לא ניתן לפתוח את הקישור. נסה שוב מאוחר יותר.')),
+          SnackBar(content: Text(AppStrings.get('network_error'))),
         );
       }
     } catch (e) {
-      // Handle exceptions gracefully without exposing details
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('אירעה שגיאה בפתיחת הקישור. נסה שוב מאוחר יותר.')),
+        SnackBar(content: Text(AppStrings.get('general_error'))),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Directionality(
-      textDirection: TextDirection.rtl, // RTL layout for Hebrew
+      textDirection: TextDirection.rtl,
       child: Scaffold(
         body: Stack(
           children: [
@@ -52,17 +57,15 @@ class Welcome extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Spacer(), // Push content downward
+                  const Spacer(),
 
                   // Headline Text
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20.0),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 20.0),
                     child: Text(
-                      'ברוכים הבאים!', // "Welcome!" in Hebrew
+                      'ברוכים הבאים!', // This can be added to app_strings.dart later
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 40,
-                        fontWeight: FontWeight.w400,
+                      style: theme.textTheme.displayLarge?.copyWith(
                         color: Colors.white,
                         fontFamily: 'RubikDirt',
                       ),
@@ -73,15 +76,11 @@ class Welcome extends StatelessWidget {
                   Container(
                     margin: const EdgeInsets.symmetric(vertical: 15.0),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Colors.blue.shade300, Colors.blue.shade700],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                      gradient: AppColors.playerGradient,
                       borderRadius: BorderRadius.circular(30.0),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.blue.withAlpha(186), // Fixed deprecated color usage
+                          color: AppColors.primaryBlue.withAlpha(186),
                           blurRadius: 10.0,
                           offset: const Offset(3, 4),
                         ),
@@ -101,11 +100,10 @@ class Welcome extends StatelessWidget {
                         shadowColor: Colors.transparent,
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'הצטרפו לקבוצה!', // Hebrew for "Join The Team!"
-                        style: TextStyle(
+                      child: Text(
+                        'הצטרפו לקבוצה!', // This could be added to app_strings.dart
+                        style: theme.textTheme.labelLarge?.copyWith(
                           fontSize: 28,
-                          fontWeight: FontWeight.w300,
                           color: Colors.white,
                           fontFamily: 'RubikDirt',
                         ),
@@ -119,7 +117,7 @@ class Welcome extends StatelessWidget {
                     decoration: BoxDecoration(
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withAlpha(230), // Fixed deprecated color usage
+                          color: Colors.black.withAlpha(230),
                           blurRadius: 10.0,
                           offset: const Offset(3, 4),
                         ),
@@ -138,11 +136,10 @@ class Welcome extends StatelessWidget {
                         backgroundColor: Colors.white,
                         side: const BorderSide(color: Colors.transparent),
                       ),
-                      child: const Text(
-                        'כניסת משתמשים', // Hebrew for "Log In"
-                        style: TextStyle(
+                      child: Text(
+                        'כניסת משתמשים', // This could be added to app_strings.dart
+                        style: theme.textTheme.labelLarge?.copyWith(
                           fontSize: 28,
-                          fontWeight: FontWeight.w300,
                           color: Colors.black,
                           fontFamily: 'RubikDirt',
                         ),
@@ -152,15 +149,13 @@ class Welcome extends StatelessWidget {
 
                   // Info Link
                   GestureDetector(
-                    onTap: () => _launchURL(context), // Added context
-                    child: const Padding(
-                      padding: EdgeInsets.only(top: 20.0),
+                    onTap: () => _launchURL(context),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 20.0),
                       child: Text(
-                        'לחצו כאן למידע נוסף על FootballHero\nותכנית HoodHero', // Hebrew
+                        'לחצו כאן למידע נוסף על FootballHero\nותכנית HoodHero', // This could be added to app_strings.dart
                         textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w300,
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           color: Colors.white,
                           decoration: TextDecoration.underline,
                           fontFamily: 'VarelaRound',

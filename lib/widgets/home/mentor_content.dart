@@ -1,324 +1,194 @@
-// lib\widgets\home\mentor_content.dart
-
+// lib/widgets/home/mentor_content.dart
 import 'package:flutter/material.dart';
-import '../common/upcoming_activities.dart';
-import '../common/fan_zone_preview.dart';
+import 'base_home_content.dart';
+import '../common/custom_card.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_colors.dart';
+import '../../localization/app_strings.dart';
 
-class MentorHomeContent extends StatelessWidget {
-  final Map<String, dynamic> userData;
-
+class MentorHomeContent extends BaseHomeContent {
   const MentorHomeContent({
     super.key,
-    required this.userData,
+    required super.userData,
+    super.cardColors,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppTheme.spacingDouble),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: AppTheme.spacingDouble),
-            
-            // Mentor Info Card
-            _buildMentorInfoCard(context),
-            
-            SizedBox(height: AppTheme.spacingDouble),
-            
-            // Mentees Section
-            _buildMenteesSection(context),
-            
-            SizedBox(height: AppTheme.spacingDouble),
-            
-            // Upcoming Sessions
-            UpcomingActivitiesSection(
-              activities: _getMentorActivities(),
-              onViewAll: () {
-                // Navigate to full session list
-              },
-            ),
-            
-            SizedBox(height: AppTheme.spacingDouble),
-            
-            // Fan Zone Preview
-            FanZonePreview(
-              onViewAll: () {
-                // Navigate to fan zone
-              },
-            ),
-            
-            SizedBox(height: AppTheme.spacingTriple),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMentorInfoCard(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-    // Use mentorColor for consistent mentor role styling
-    final mentorColor = AppColors.mentorColor;
+  List<Widget> buildContentSections(BuildContext context) {
+    // Get mentees data
+    final menteeData = _getMenteesData();
     
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
-      ),
-      child: Padding(
-        padding: AppTheme.cardPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Mentor Dashboard',
-                  style: textTheme.headlineSmall,
-                ),
-                // Expertise badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: mentorColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    userData['expertise'] ?? 'Football',
-                    style: textTheme.labelSmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: AppTheme.spacingDouble),
-            // Mentor Stats Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildStatBox(
-                  context,
-                  'Active Mentees', 
-                  '${userData['active_mentees'] ?? 0}',
-                  mentorColor,
-                ),
-                SizedBox(width: AppTheme.spacingDouble),
-                _buildStatBox(
-                  context,
-                  'Hours This Month', 
-                  '${userData['mentoring_hours_month'] ?? 0}',
-                  AppColors.primaryBlue,
-                ),
-                SizedBox(width: AppTheme.spacingDouble),
-                _buildStatBox(
-                  context,
-                  'Rating', 
-                  userData['rating'] != null ? '${userData['rating']}/5' : 'N/A',
-                  AppColors.primaryAmber,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatBox(
-    BuildContext context,
-    String label, 
-    String value, 
-    Color color,
-  ) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
+    // Get upcoming sessions
+    final upcomingSessions = [
+      {
+        'title': 'אימון אישי - יוסי כהן',
+        'time': 'יום ד׳, 16:00',
+        'location': 'מגרש אימונים מרכזי',
+        'focus': 'טכניקת בעיטות',
+      },
+      {
+        'title': 'מפגש הערכה - דני ישראלי',
+        'time': 'יום ה׳, 18:30',
+        'location': 'מגרש אימונים צפוני',
+        'focus': 'הערכת ביצועים וקביעת יעדים',
+      },
+    ];
     
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Color.fromRGBO(color.red, color.green, color.blue, 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: textTheme.bodyMedium?.copyWith(
-                color: color,
+    // Get development plans
+    final developmentPlans = [
+      {
+        'mentee': 'יוסי כהן',
+        'goal': 'שיפור טכניקת כדרור',
+        'progress': 0.65,
+        'status': 'בתהליך',
+      },
+      {
+        'mentee': 'דני ישראלי',
+        'goal': 'חיזוק יכולת הגנתית',
+        'progress': 0.40,
+        'status': 'בתהליך',
+      },
+      {
+        'mentee': 'מיכל לוי',
+        'goal': 'פיתוח מנהיגות בשטח',
+        'progress': 0.85,
+        'status': 'כמעט הושלם',
+      },
+    ];
+
+    // Get card colors using the base class method
+    final effectiveCardColors = getEffectiveCardColors('mentor');
+
+    return [
+      // Mentees overview
+      CustomCard(
+        title: AppStrings.get('my_mentees'),
+        backgroundColor: effectiveCardColors['mentees'],
+        child: ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: menteeData.length,
+          itemBuilder: (context, index) {
+            final mentee = menteeData[index];
+            return ListTile(
+              leading: CircleAvatar(
+                backgroundImage: mentee['image_url'] != null 
+                    ? NetworkImage(mentee['image_url'] as String) 
+                    : null,
+                child: mentee['image_url'] == null 
+                    ? Text(mentee['name'].toString().substring(0, 1)) 
+                    : null,
               ),
-            ),
-            SizedBox(height: AppTheme.spacing),
-            Text(
-              value,
-              style: textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: colorScheme.onSurface,
-              ),
-            ),
-          ],
+              title: Text(mentee['name'] as String),
+              subtitle: Text('${mentee['age']} שנים | ${mentee['position']}'),
+              trailing: Icon(Icons.arrow_forward_ios, size: 16),
+              onTap: () {
+                // Navigate to mentee details
+              },
+            );
+          },
         ),
       ),
-    );
-  }
-
-  Widget _buildMenteesSection(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-    final mentees = _getMenteesData();
-    
-    return Card(
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.cardBorderRadius),
+      
+      SizedBox(height: ThemeConstants.sm),
+      
+      // Upcoming sessions
+      CustomCard(
+        title: AppStrings.get('upcoming_sessions'),
+        backgroundColor: effectiveCardColors['sessions'],
+        child: ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: upcomingSessions.length,
+          itemBuilder: (context, index) {
+            final session = upcomingSessions[index];
+            return ListTile(
+              title: Text(session['title'] as String),
+              subtitle: Text('${session['time']} | ${session['location']}'),
+              trailing: Tooltip(
+                message: session['focus'] as String,
+                child: Icon(Icons.info_outline, size: 16),
+              ),
+            );
+          },
+        ),
       ),
-      child: Padding(
-        padding: AppTheme.cardPadding,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'My Mentees',
-                  style: textTheme.headlineSmall,
-                ),
-                TextButton(
-                  onPressed: () {
-                    // Navigate to full mentee list
-                  },
-                  child: const Text('View All'),
-                ),
-              ],
-            ),
-            SizedBox(height: AppTheme.spacing + 2),
-            if (mentees.isEmpty)
-              Padding(
-                padding: EdgeInsets.symmetric(vertical: AppTheme.spacing + 2),
-                child: Center(
-                  child: Text(
-                    'No active mentees',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onSurface.withOpacity(0.6),
-                    ),
+      
+      SizedBox(height: ThemeConstants.sm),
+      
+      // Development plans
+      CustomCard(
+        title: AppStrings.get('development_plans'),
+        backgroundColor: effectiveCardColors['development'],
+        child: ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: developmentPlans.length,
+          itemBuilder: (context, index) {
+            final plan = developmentPlans[index];
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        plan['mentee'] as String,
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const Spacer(),
+                      Text(
+                        plan['status'] as String,
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              )
-            else
-              Column(
-                children: mentees.map((mentee) => _buildMenteeItem(context, mentee)).toList(),
+                  const SizedBox(height: 4),
+                  Text(plan['goal'] as String),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: plan['progress'] as double,
+                    backgroundColor: Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                  ),
+                ],
               ),
-          ],
+            );
+          },
         ),
       ),
-    );
+    ];
   }
-
-  Widget _buildMenteeItem(BuildContext context, Map<String, dynamic> mentee) {
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-    
-    return Padding(
-      padding: EdgeInsets.only(bottom: AppTheme.spacing),
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: CircleAvatar(
-          radius: 25,
-          backgroundImage: mentee['profile_image'] != null 
-              ? NetworkImage(mentee['profile_image'])
-              : null,
-          child: mentee['profile_image'] == null
-              ? const Icon(Icons.person, color: Colors.white)
-              : null,
-          backgroundColor: AppColors.mentorColor,
-        ),
-        title: Text(
-          mentee['name'] ?? 'Unknown',
-          style: textTheme.titleMedium,
-        ),
-        subtitle: Text(
-          '${mentee['age'] ?? ''} • ${mentee['focus_area'] ?? 'General mentoring'}',
-          style: textTheme.bodySmall,
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.message_outlined),
-              onPressed: () {
-                // Message mentee
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.calendar_month_outlined),
-              onPressed: () {
-                // Schedule session
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Get sample mentees data
+  
+  // Helper method to get mentees data
   List<Map<String, dynamic>> _getMenteesData() {
-    // This would typically come from an API call
+    // In a real app, this would come from the userData
+    // For now, we'll use mock data
     return [
       {
         'id': '1',
-        'name': 'David Levy',
-        'age': 16,
-        'focus_area': 'Leadership',
-        'profile_image': null,
+        'name': 'יוסי כהן',
+        'age': 15,
+        'position': 'חלוץ',
+        'image_url': null,
       },
       {
         'id': '2',
-        'name': 'Hannah Klein',
-        'age': 15,
-        'focus_area': 'Technical Skills',
-        'profile_image': null,
+        'name': 'דני ישראלי',
+        'age': 16,
+        'position': 'מגן',
+        'image_url': null,
       },
       {
         'id': '3',
-        'name': 'Yossi Ben',
-        'age': 17,
-        'focus_area': 'Career Planning',
-        'profile_image': null,
-      },
-    ];
-  }
-
-  // Get mentor-specific activities
-  List<Map<String, dynamic>> _getMentorActivities() {
-    // This would typically come from an API call
-    return [
-      {
-        'type': 'meeting',
-        'title': 'Mentoring Session - David',
-        'time': 'Mon, 4 PM',
-        'isRequired': true,
-      },
-      {
-        'type': 'meeting',
-        'title': 'Mentoring Session - Hannah',
-        'time': 'Wed, 5 PM',
-        'isRequired': true,
-      },
-      {
-        'type': 'meeting',
-        'title': 'Group Workshop',
-        'time': 'Fri, 6 PM',
-        'isRequired': true,
+        'name': 'מיכל לוי',
+        'age': 14,
+        'position': 'קשרית',
+        'image_url': null,
       },
     ];
   }
