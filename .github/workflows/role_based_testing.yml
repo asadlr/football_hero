@@ -1,0 +1,70 @@
+name: Role-Based Testing
+
+on:
+  push:
+    paths:
+      - 'lib/widgets/home/**'
+      - 'lib/screens/home.dart'
+      - 'lib/models/user_role.dart'
+  pull_request:
+    paths:
+      - 'lib/widgets/home/**'
+      - 'lib/screens/home.dart'
+      - 'lib/models/user_role.dart'
+  workflow_dispatch:
+
+jobs:
+  test_role_components:
+    name: Test Role-Specific Components
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+          channel: 'stable'
+          cache: true
+      
+      - name: Create .env file
+        run: |
+          mkdir -p assets
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > assets/.env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> assets/.env
+          echo "ENV=test" >> assets/.env
+          echo "LOG_INFO=true" >> assets/.env
+          echo "LOG_WARNING=true" >> assets/.env
+          echo "LOG_ERROR=true" >> assets/.env
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Run player content tests
+        run: flutter test test/widgets/home/player_content_test.dart
+      
+      - name: Run coach content tests
+        run: flutter test test/widgets/home/coach_content_test.dart
+      
+      - name: Run parent content tests
+        run: flutter test test/widgets/home/parent_content_test.dart
+      
+      - name: Run mentor content tests
+        run: flutter test test/widgets/home/mentor_content_test.dart
+      
+      - name: Run community manager content tests
+        run: flutter test test/widgets/home/community_manager_content_test.dart
+      
+      - name: Run home screen controller test
+        run: flutter test test/screens/home_test.dart
+      
+      - name: Run RTL support tests
+        run: flutter test test/localization/rtl_support_test.dart
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: role-based-test-results
+          path: test-results/
+          retention-days: 7

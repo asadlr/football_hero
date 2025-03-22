@@ -1,0 +1,70 @@
+name: Performance Testing
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 1'  # Run weekly on Mondays
+  workflow_dispatch:
+
+jobs:
+  performance_test:
+    name: Run Performance Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+          channel: 'stable'
+          cache: true
+      
+      - name: Create .env file
+        run: |
+          mkdir -p assets
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > assets/.env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> assets/.env
+          echo "ENV=test" >> assets/.env
+          echo "LOG_INFO=true" >> assets/.env
+          echo "LOG_WARNING=true" >> assets/.env
+          echo "LOG_ERROR=true" >> assets/.env
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Install DevTools
+        run: dart pub global activate devtools
+      
+      - name: Run startup time test
+        run: flutter run --profile --trace-startup --verbose
+      
+      - name: Run memory benchmark
+        run: flutter run --profile --dump-memory-usage --verbose
+      
+      - name: Build performance
+        run: flutter build apk --performance-measurement-file=build_performance.json
+      
+      - name: Run widget build performance test
+        run: |
+          flutter run --profile \
+            --trace-skia \
+            --trace-systrace \
+            --trace-skia-allowlist="SkCanvas::drawVertices" \
+            --start-paused
+      
+      - name: Collect performance data
+        run: |
+          mkdir -p performance-data
+          cp build_performance.json performance-data/
+          cp *.timeline.json performance-data/ || true
+          cp *.trace performance-data/ || true
+          cp *.log performance-data/ || true
+      
+      - name: Upload performance data
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-data
+          path: performance-data/
+          retention-days: 30

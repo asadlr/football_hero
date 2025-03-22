@@ -1,0 +1,38 @@
+name: Update CI/CD Dashboard
+
+on:
+  workflow_run:
+    workflows: ["Basic Tests", "PR Validation", "Build APK", "Release Build", "Scheduled Maintenance"]
+    types:
+      - completed
+  schedule:
+    - cron: '0 0 * * *'  # Update daily
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  update_dashboard:
+    name: Update Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install PyGithub jinja2 matplotlib pandas requests
+      
+      - name: Generate dashboard
+        run: python .github/scripts/generate_dashboard.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: dashboard
+          branch: gh-pages

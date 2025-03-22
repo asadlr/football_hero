@@ -1,0 +1,95 @@
+name: Core Components Testing
+
+on:
+  push:
+    paths:
+      - 'lib/models/**'
+      - 'lib/screens/**'
+      - 'lib/widgets/**'
+      - 'lib/theme/**'
+      - 'lib/state/**'
+  pull_request:
+    paths:
+      - 'lib/models/**'
+      - 'lib/screens/**'
+      - 'lib/widgets/**'
+      - 'lib/theme/**'
+      - 'lib/state/**'
+  workflow_dispatch:
+
+jobs:
+  test_core:
+    name: Test Core Components
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+          channel: 'stable'
+          cache: true
+      
+      - name: Create .env file
+        run: |
+          mkdir -p assets
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > assets/.env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> assets/.env
+          echo "ENV=test" >> assets/.env
+          echo "LOG_INFO=true" >> assets/.env
+          echo "LOG_WARNING=true" >> assets/.env
+          echo "LOG_ERROR=true" >> assets/.env
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Determine changed components
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            models:
+              - 'lib/models/**'
+            screens:
+              - 'lib/screens/**'
+            widgets:
+              - 'lib/widgets/**'
+            theme:
+              - 'lib/theme/**'
+            state:
+              - 'lib/state/**'
+      
+      - name: Run model tests
+        if: steps.changes.outputs.models == 'true'
+        run: flutter test test/models/ --coverage
+      
+      - name: Run screen tests
+        if: steps.changes.outputs.screens == 'true'
+        run: flutter test test/screens/ --coverage
+      
+      - name: Run widget tests
+        if: steps.changes.outputs.widgets == 'true'
+        run: flutter test test/widgets/ --coverage
+      
+      - name: Run theme tests
+        if: steps.changes.outputs.theme == 'true'
+        run: flutter test test/theme/ --coverage
+      
+      - name: Run state tests
+        if: steps.changes.outputs.state == 'true'
+        run: flutter test test/state/ --coverage
+      
+      - name: Generate coverage report
+        run: |
+          if [ -f "coverage/lcov.info" ]; then
+            genhtml coverage/lcov.info -o coverage/html
+          fi
+      
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7

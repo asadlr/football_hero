@@ -1,0 +1,109 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'lib/screens/**'
+      - 'lib/widgets/**'
+      - 'test/integration/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'lib/screens/**'
+      - 'lib/widgets/**'
+      - 'test/integration/**'
+  workflow_dispatch:
+
+jobs:
+  integration_test:
+    name: Run Integration Tests
+    runs-on: macos-latest # Using macOS runner for better performance with emulators
+    strategy:
+      matrix:
+        api-level: [29]
+        target: [default]
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+          channel: 'stable'
+          cache: true
+      
+      - name: Create .env file
+        run: |
+          mkdir -p assets
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > assets/.env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> assets/.env
+          echo "ENV=test" >> assets/.env
+          echo "LOG_INFO=true" >> assets/.env
+          echo "LOG_WARNING=true" >> assets/.env
+          echo "LOG_ERROR=true" >> assets/.env
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: AVD cache
+        uses: actions/cache@v3
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}
+      
+      - name: Create AVD and generate snapshot for caching
+        if: steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: false
+          script: echo "Generated AVD snapshot for caching."
+      
+      - name: Run integration tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          target: ${{ matrix.target }}
+          arch: x86_64
+          force-avd-creation: false
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          disable-animations: true
+          script: flutter test integration_test --coverage
+      
+      - name: Generate coverage report
+        if: always()
+        run: |
+          if [ -f "coverage/lcov.info" ]; then
+            genhtml coverage/lcov.info -o coverage/html
+          fi
+      
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-test-results
+          path: test-results/
+          retention-days: 7
+      
+      - name: Upload screenshots (if any)
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: integration-screenshots
+          path: screenshots/
+          retention-days: 7

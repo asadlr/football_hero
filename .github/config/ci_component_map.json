@@ -1,0 +1,55 @@
+{
+  "components": {
+    "models": {
+      "paths": ["lib/models/**"],
+      "tests": ["test/models/**"],
+      "owners": ["@asadlr"]
+    },
+    "screens": {
+      "paths": ["lib/screens/**"],
+      "tests": ["test/screens/**", "test/integration/**"],
+      "owners": ["@asadlr"]
+    },
+    "widgets": {
+      "paths": ["lib/widgets/**"],
+      "tests": ["test/widgets/**", "test/integration/**"],
+      "owners": ["@asadlr"]
+    },
+    "theme": {
+      "paths": ["lib/theme/**"],
+      "tests": ["test/theme/**"],
+      "owners": ["@asadlr"]
+    },
+    "state": {
+      "paths": ["lib/state/**"],
+      "tests": ["test/state/**"],
+      "owners": ["@asadlr"]
+    },
+    "role_content": {
+      "paths": ["lib/widgets/home/**", "lib/screens/home.dart", "lib/models/user_role.dart"],
+      "tests": ["test/widgets/home/**", "test/screens/home_test.dart"],
+      "owners": ["@asadlr"]
+    },
+    "localization": {
+      "paths": ["lib/localization/**"],
+      "tests": ["test/localization/**"],
+      "owners": ["@asadlr"]
+    }
+  },
+  "test_mapping": {
+    "models": ["test/models/**"],
+    "screens": ["test/screens/**"],
+    "widgets": ["test/widgets/**"],
+    "theme": ["test/theme/**"],
+    "state": ["test/state/**"],
+    "integration": ["test/integration/**"],
+    "role_based": ["test/widgets/home/**", "test/screens/home_test.dart"],
+    "localization": ["test/localization/**"]
+  },
+  "critical_files": [
+    "lib/main.dart",
+    "lib/screens/home.dart",
+    "lib/models/user_role.dart",
+    "lib/theme/app_colors.dart"
+  ]
+}
