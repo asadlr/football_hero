@@ -1,0 +1,20 @@
+name: 'Prepare Environment'
+description: 'Prepare environment for Flutter testing'
+runs:
+  using: 'composite'
+  steps:
+    - name: Create .env file
+      shell: bash
+      run: |
+        mkdir -p assets
+        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > assets/.env
+        echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> assets/.env
+        echo "ENV=${{ inputs.env || 'test' }}" >> assets/.env
+        echo "LOG_INFO=${{ inputs.log_info || 'true' }}" >> assets/.env
+        echo "LOG_WARNING=${{ inputs.log_warning || 'true' }}" >> assets/.env
+        echo "LOG_ERROR=${{ inputs.log_error || 'true' }}" >> assets/.env
+      
+    - name: Install dependencies
+      shell: bash
+      run: flutter pub get
+
