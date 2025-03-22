@@ -7,10 +7,12 @@ on:
     
 jobs:
   validate:
-    name: Validate
+    name: Code Quality Checks
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for proper analysis
       
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -27,6 +29,98 @@ jobs:
         
       - name: Analyze project source
         run: flutter analyze
-        
-      - name: Run basic tests
-        run: flutter test
+      
+      - name: Check for dependency issues
+        run: flutter pub outdated
+
+      - name: Check for large files
+        run: find . -type f -not -path "*/\.*" -not -path "*/build/*" -size +10M | tee large_files.txt
+      
+      - name: Fail if large files found
+        run: |
+          if [ -s large_files.txt ]; then
+            echo "Error: Large files detected:"
+            cat large_files.txt
+            exit 1
+          fi
+  
+  security_scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+          channel: 'stable'
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Run dependency vulnerability scan
+        run: |
+          dart pub global activate dependency_validator
+          dart pub global run dependency_validator:dependency_validator
+  
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+          channel: 'stable'
+          cache: true
+      
+      - name: Create .env file
+        run: |
+          mkdir -p assets
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > assets/.env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> assets/.env
+          echo "ENV=test" >> assets/.env
+          echo "LOG_INFO=true" >> assets/.env
+          echo "LOG_WARNING=true" >> assets/.env
+          echo "LOG_ERROR=true" >> assets/.env
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Run all tests
+        run: flutter test --coverage
+      
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 5
+  
+  performance:
+    name: Performance Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+          channel: 'stable'
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Check build performance
+        run: flutter build apk --debug --performance-measurement-file=performance.json
+      
+      - name: Upload performance metrics
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-metrics
+          path: performance.json
+          retention-days: 5
