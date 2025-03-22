@@ -17,10 +17,14 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: 'stable'
+        flutter-version: 'latest'  # Or replace with the version you're using
+        channel: stable
 
     - name: Install Dependencies
       run: flutter pub get
+
+    - name: Build Application
+      run: flutter build apk
 
     - name: Run Performance Tests
       run: flutter test --tags=performance
