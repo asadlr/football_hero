@@ -1,0 +1,8 @@
+# CI/CD Pipeline
+.github/workflows/ @asadlr
+
+# Core application code
+lib/ @asadlr
+
+# Tests
+test/ @asadlr

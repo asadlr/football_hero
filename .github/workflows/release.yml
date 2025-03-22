@@ -1,39 +1,34 @@
-name: Basic Test
+name: Release Build
 
 on:
   push:
-    branches: [ main ]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Run Tests
+  build_release:
+    name: Build Release APK
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.29.2'
           channel: 'stable'
-          cache: true
-      
       - name: Create .env file
         run: |
           mkdir -p assets
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > assets/.env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> assets/.env
-          echo "ENV=${{ secrets.ENV }}" >> assets/.env
-      
+          echo "ENV=production" >> assets/.env
       - name: Install dependencies
         run: flutter pub get
-      
-      - name: Run model tests
-        run: flutter test test/models/
-      
-      - name: Run service tests
-        run: flutter test test/services/
-      
-      - name: Run basic tests
-        run: flutter test test/sample_test.dart
+      - name: Build Release APK
+        run: flutter build apk --release

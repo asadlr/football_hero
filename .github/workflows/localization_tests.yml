@@ -1,0 +1,24 @@
+name: Localization Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  test_localization:
+    name: Test RTL and Localization
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.2'
+          channel: 'stable'
+      - name: Install dependencies
+        run: flutter pub get
+      - name: Run localization tests
+        run: flutter test test/localization/
