@@ -12,6 +12,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -21,6 +27,11 @@ jobs:
       
       - name: Install dependencies
         run: flutter pub get
+      
+      - name: Update gradle configuration
+        run: |
+          cd android
+          echo "org.gradle.java.home=" > local.properties
       
       - name: Build APK (Debug)
         run: flutter build apk --debug
