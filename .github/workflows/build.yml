@@ -28,10 +28,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
       
-      - name: Update gradle configuration
+      - name: Fix Gradle configuration
         run: |
           cd android
-          echo "org.gradle.java.home=" > local.properties
+          cat > gradle.properties << EOL
+          org.gradle.jvmargs=-Xmx1536M
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOL
+          cat > local.properties << EOL
+          sdk.dir=/opt/hostedtoolcache/flutter/3.29.2/x64/bin/cache/artifacts/gradle
+          EOL
       
       - name: Build APK (Debug)
         run: flutter build apk --debug
