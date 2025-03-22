@@ -1,4 +1,4 @@
-name: Build
+name: Basic Test
 
 on:
   push:
@@ -6,17 +6,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build_android:
-    name: Build Android
+  test:
+    name: Run Tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '17'
       
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -25,20 +19,13 @@ jobs:
           channel: 'stable'
           cache: true
       
+      - name: Create empty .env file
+        run: |
+          mkdir -p assets
+          touch assets/.env
+      
       - name: Install dependencies
         run: flutter pub get
       
-      - name: Fix Gradle configuration
-        run: |
-          cd android
-          cat > gradle.properties << EOL
-          org.gradle.jvmargs=-Xmx1536M
-          android.useAndroidX=true
-          android.enableJetifier=true
-          EOL
-          cat > local.properties << EOL
-          sdk.dir=/opt/hostedtoolcache/flutter/3.29.2/x64/bin/cache/artifacts/gradle
-          EOL
-      
-      - name: Build APK (Debug)
-        run: flutter build apk --debug
+      - name: Run tests
+        run: flutter test
