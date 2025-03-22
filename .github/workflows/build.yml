@@ -41,11 +41,26 @@ jobs:
       - name: Run tests
         run: flutter test
       
+      - name: Fix Gradle configuration
+        run: |
+          cd android
+          cat > gradle.properties << EOL
+          org.gradle.jvmargs=-Xmx1536M
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOL
+
+      - name: Clear any existing local.properties
+        run: |
+          cd android
+          rm -f local.properties
+          touch local.properties
+      
       - name: Build APK (Debug)
         run: flutter build apk --debug
       
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2  # Changed from v3 to v2
         with:
           name: debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
