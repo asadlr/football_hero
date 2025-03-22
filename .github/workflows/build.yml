@@ -1,3 +1,5 @@
+# Edit the build workflow file to fix the artifact upload issue
+Set-Content -Path ".github\workflows\build.yml" -Value @"
 name: Build
 
 on:
@@ -12,12 +14,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '11'
-      
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -31,8 +27,10 @@ jobs:
       - name: Build APK (Debug)
         run: flutter build apk --debug
       
+      # Use a different version of the upload-artifact action
       - name: Upload APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2  # Changed from v3 to v2
         with:
           name: debug-apk
           path: build/app/outputs/flutter-apk/app-debug.apk
+"@
