@@ -1,5 +1,3 @@
-# Edit the build workflow file to fix the artifact upload issue
-Set-Content -Path ".github\workflows\build.yml" -Value @"
 name: Build
 
 on:
