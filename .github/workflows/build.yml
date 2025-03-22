@@ -2,8 +2,17 @@ name: Build APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type (debug/release)'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+        - debug
+        - release
 
 jobs:
   build_android:
@@ -48,15 +57,34 @@ jobs:
           org.gradle.jvmargs=-Xmx1536M
           android.useAndroidX=true
           android.enableJetifier=true
+          android.enableR8=true
+          org.gradle.parallel=true
+          org.gradle.daemon=true
           EOL
 
-      - name: Clear any existing local.properties
+      - name: Set up local.properties
         run: |
           cd android
           rm -f local.properties
-          touch local.properties
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
       
-      - name: Build APK (Debug)
-        run: flutter build apk --debug
-        
-      # Remove the artifact upload step for now
+      - name: Build APK
+        run: |
+          if [[ "${{ github.event.inputs.build_type }}" == "release" || "${{ github.ref }}" == "refs/tags/"* ]]; then
+            flutter build apk --release
+            ARTIFACT_PATH=build/app/outputs/flutter-apk/app-release.apk
+            ARTIFACT_NAME=release-apk
+          else
+            flutter build apk --debug
+            ARTIFACT_PATH=build/app/outputs/flutter-apk/app-debug.apk
+            ARTIFACT_NAME=debug-apk
+          fi
+          echo "ARTIFACT_PATH=$ARTIFACT_PATH" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+      
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_PATH }}
+          retention-days: 7
