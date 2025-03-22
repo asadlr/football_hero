@@ -1,0 +1,87 @@
+name: Nightly Tests
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # Run every day at 2 AM UTC
+  workflow_dispatch:
+
+jobs:
+  comprehensive_testing:
+    name: Comprehensive Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Run all unit tests
+        run: flutter test test/ --exclude-tags="e2e,golden" --coverage
+      
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage/lcov.info
+          flags: nightly
+  
+  golden_tests:
+    name: Golden Image Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Run golden tests
+        run: flutter test test/golden/ --tags="golden" --update-goldens
+      
+      - name: Upload updated goldens
+        if: success()
+        uses: actions/upload-artifact@v3
+        with:
+          name: updated-goldens
+          path: test/golden/
+  
+  code_metrics:
+    name: Code Quality Metrics
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Install dart_code_metrics
+        run: flutter pub global activate dart_code_metrics
+      
+      - name: Analyze with metrics
+        run: dart run dart_code_metrics:metrics analyze lib --reporter=github
+      
+      - name: Check unused code
+        run: dart run dart_code_metrics:metrics check-unused-code lib --reporter=console
+      
+      - name: Check unused files
+        run: dart run dart_code_metrics:metrics check-unused-files lib --reporter=console

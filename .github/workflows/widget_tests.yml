@@ -1,0 +1,38 @@
+name: Widget Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  widget_tests:
+    name: Run Widget Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        category: [common, home, onboarding, screens]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Run ${{ matrix.category }} widget tests
+        run: flutter test test/widgets/${{ matrix.category }}/ --coverage
+        
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage/lcov.info
+          flags: widget-tests,${{ matrix.category }}

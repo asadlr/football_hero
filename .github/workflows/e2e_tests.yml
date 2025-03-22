@@ -1,0 +1,61 @@
+name: End-to-End Tests
+
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 5' # Run weekly on Fridays
+  workflow_dispatch:
+
+jobs:
+  e2e_tests:
+    name: Run E2E Tests
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        device: [iPhone, iPad, android-pixel]
+        include:
+          - device: iPhone
+            os: iOS
+            target: ios
+          - device: iPad
+            os: iOS
+            target: ios
+          - device: android-pixel
+            os: android
+            target: android
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Setup iOS Simulator
+        if: matrix.os == 'iOS'
+        run: |
+          DEVICE=`xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}'`
+          xcrun simctl boot "${DEVICE}"
+        
+      - name: Setup Android Emulator
+        if: matrix.os == 'android'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          script: echo "Emulator started"
+        
+      - name: Run E2E tests
+        run: flutter test integration_test/e2e/
+        
+      - name: Upload artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-test-failures-${{ matrix.device }}
+          path: integration_test/failures/

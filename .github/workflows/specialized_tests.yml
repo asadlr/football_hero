@@ -1,0 +1,72 @@
+name: Specialized Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 3' # Run weekly on Wednesdays
+  workflow_dispatch:
+
+jobs:
+  accessibility_tests:
+    name: Accessibility Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Run accessibility tests
+        run: flutter test test/accessibility/
+  
+  rtl_tests:
+    name: RTL Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Run RTL tests
+        run: flutter test test/localization/rtl_test.dart
+  
+  performance_tests:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Run performance tests
+        run: flutter test test/performance/
+        
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: test/performance/results/

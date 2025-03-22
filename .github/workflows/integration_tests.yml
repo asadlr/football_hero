@@ -1,0 +1,40 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 0 * * 1' # Run weekly on Mondays
+  workflow_dispatch:
+
+jobs:
+  integration_tests:
+    name: Run Integration Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        feature: [auth, onboarding, players, coaches, parents, mentors, community_managers]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Start Supabase local emulator
+        run: docker-compose up -d
+        working-directory: ./supabase
+        
+      - name: Run integration tests for ${{ matrix.feature }}
+        run: flutter test integration_test/${{ matrix.feature }}_test.dart -d web-server
+        
+      - name: Stop Supabase emulator
+        if: always()
+        run: docker-compose down
+        working-directory: ./supabase

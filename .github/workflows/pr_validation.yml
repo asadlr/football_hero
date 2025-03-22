@@ -1,0 +1,57 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    
+jobs:
+  analyze:
+    name: Static Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Verify formatting
+        run: dart format --set-exit-if-changed .
+        
+      - name: Analyze project source
+        run: flutter analyze --no-fatal-infos
+        
+      - name: Check for dependency issues
+        run: flutter pub outdated
+  
+  quick_tests:
+    name: Quick Tests
+    runs-on: ubuntu-latest
+    needs: analyze
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.x'
+          channel: 'stable'
+          cache: true
+      
+      - name: Install dependencies
+        run: flutter pub get
+        
+      - name: Run critical unit tests
+        run: flutter test --tags="critical" --no-pub
+        
+      - name: Run model tests
+        run: flutter test test/models/ --no-pub
+        
+      - name: Run service tests
+        run: flutter test test/services/ --no-pub
