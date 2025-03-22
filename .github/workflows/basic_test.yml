@@ -1,4 +1,4 @@
-name: Basic Test
+name: Build APK
 
 on:
   push:
@@ -6,11 +6,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
-    name: Run Tests
+  build_android:
+    name: Build Android
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
       
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -25,10 +31,17 @@ jobs:
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > assets/.env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> assets/.env
           echo "ENV=${{ secrets.ENV }}" >> assets/.env
+<<<<<<< HEAD
+=======
+          echo "LOG_INFO=${{ secrets.LOG_INFO }}" >> assets/.env
+          echo "LOG_WARNING=${{ secrets.LOG_WARNING }}" >> assets/.env
+          echo "LOG_ERROR=${{ secrets.LOG_ERROR }}" >> assets/.env
+>>>>>>> e3a64a0ac9786c7e21856a13891e4311f01ab9b6
       
       - name: Install dependencies
         run: flutter pub get
       
+<<<<<<< HEAD
       - name: Run model tests
         run: flutter test test/models/
       
@@ -37,3 +50,25 @@ jobs:
       
       - name: Run basic tests
         run: flutter test test/sample_test.dart
+=======
+      - name: Run tests
+        run: flutter test
+      
+      - name: Fix Gradle configuration
+        run: |
+          cd android
+          cat > gradle.properties << EOL
+          org.gradle.jvmargs=-Xmx1536M
+          android.useAndroidX=true
+          android.enableJetifier=true
+          EOL
+
+      - name: Clear any existing local.properties
+        run: |
+          cd android
+          rm -f local.properties
+          touch local.properties
+      
+      - name: Build APK (Debug)
+        run: flutter build apk --debug
+>>>>>>> e3a64a0ac9786c7e21856a13891e4311f01ab9b6
