@@ -1,34 +1,203 @@
-name: Release Build
+name: Release Build & Deploy
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*.*.*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (x.y.z)'
+        required: true
+        type: string
+      release_notes:
+        description: 'Release notes'
+        required: true
+        type: string
+      deploy_to:
+        description: 'Deploy to'
+        required: true
+        default: 'firebase'
+        type: choice
+        options:
+        - firebase
+        - play_store_internal
+        - both
 
 jobs:
-  build_release:
-    name: Build Release APK
+  prepare_release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version_number: ${{ steps.get_version.outputs.version_number }}
+      version_code: ${{ steps.get_version.outputs.version_code }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      - name: Get version
+        id: get_version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Extract version from tag (vX.Y.Z)
+            VERSION=${GITHUB_REF#refs/tags/v}
+          fi
+          
+          # Calculate version code (for Android)
+          # Format: XYYZZ where X=major, YY=minor, ZZ=patch
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          # Ensure minor and patch are zero-padded to 2 digits
+          MINOR=$(printf "%02d" $MINOR)
+          PATCH=$(printf "%02d" $PATCH)
+          VERSION_CODE=$MAJOR$MINOR$PATCH
+          
+          echo "version_number=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+      
+      - name: Create release notes
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "${{ github.event.inputs.release_notes }}" > release_notes.txt
+          else
+            # Generate from git commits since last tag
+            git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s" > release_notes.txt
+          fi
+      
+      - name: Upload release notes
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-notes
+          path: release_notes.txt
+  
+  build_android:
+    name: Build Android Release
+    needs: prepare_release
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: 'zulu'
           java-version: '17'
+      
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.29.2'
           channel: 'stable'
+          cache: true
+      
       - name: Create .env file
         run: |
           mkdir -p assets
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > assets/.env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> assets/.env
           echo "ENV=production" >> assets/.env
+          echo "LOG_INFO=false" >> assets/.env
+          echo "LOG_WARNING=true" >> assets/.env
+          echo "LOG_ERROR=true" >> assets/.env
+      
       - name: Install dependencies
         run: flutter pub get
-      - name: Build Release APK
+      
+      - name: Update version
+        run: |
+          # Update pubspec.yaml with new version
+          sed -i "s/^version: .*/version: ${{ needs.prepare_release.outputs.version_number }}+${{ needs.prepare_release.outputs.version_code }}/" pubspec.yaml
+      
+      - name: Setup signing
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/keystore.jks
+          
+          # Create key.properties
+          cat > android/key.properties << EOL
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=keystore.jks
+          EOL
+      
+      - name: Build APK
         run: flutter build apk --release
+      
+      - name: Build App Bundle
+        run: flutter build appbundle
+      
+      - name: Rename APK with version
+        run: |
+          mkdir -p releases
+          cp build/app/outputs/flutter-apk/app-release.apk releases/footballhero-${{ needs.prepare_release.outputs.version_number }}.apk
+          cp build/app/outputs/bundle/release/app-release.aab releases/footballhero-${{ needs.prepare_release.outputs.version_number }}.aab
+      
+      - name: Upload release build
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-build
+          path: releases/
+          retention-days: 30
+  
+  deploy:
+    name: Deploy Release
+    needs: [prepare_release, build_android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download release build
+        uses: actions/download-artifact@v3
+        with:
+          name: release-build
+          path: releases
+      
+      - name: Download release notes
+        uses: actions/download-artifact@v3
+        with:
+          name: release-notes
+          path: .
+      
+      - name: Setup Firebase CLI
+        if: ${{ github.event.inputs.deploy_to == 'firebase' || github.event.inputs.deploy_to == 'both' || github.event_name == 'push' }}
+        uses: w9jds/firebase-action@master
+        with:
+          args: setup:android
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      
+      - name: Deploy to Firebase App Distribution
+        if: ${{ github.event.inputs.deploy_to == 'firebase' || github.event.inputs.deploy_to == 'both' || github.event_name == 'push' }}
+        uses: w9jds/firebase-action@master
+        with:
+          args: appdistribution:distribute releases/footballhero-${{ needs.prepare_release.outputs.version_number }}.apk --app ${{ secrets.FIREBASE_APP_ID }} --groups "testers,qa" --release-notes-file release_notes.txt
+        env:
+          GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      
+      - name: Setup Google Play Publisher
+        if: ${{ github.event.inputs.deploy_to == 'play_store_internal' || github.event.inputs.deploy_to == 'both' }}
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAYSTORE_SERVICE_ACCOUNT_JSON }}
+          packageName: com.footballhero.app
+          releaseName: ${{ needs.prepare_release.outputs.version_number }}
+          releaseFiles: releases/footballhero-${{ needs.prepare_release.outputs.version_number }}.aab
+          track: internal
+          status: completed
+          releaseNotes: releases/release_notes.txt
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            releases/footballhero-${{ needs.prepare_release.outputs.version_number }}.apk
+            releases/footballhero-${{ needs.prepare_release.outputs.version_number }}.aab
+          body_path: release_notes.txt
+          name: v${{ needs.prepare_release.outputs.version_number }}
+          tag_name: v${{ needs.prepare_release.outputs.version_number }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
