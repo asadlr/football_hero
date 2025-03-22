@@ -63,7 +63,7 @@ jobs:
           cp *.log performance-data/ || true
       
       - name: Upload performance data
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: performance-data
           path: performance-data/
