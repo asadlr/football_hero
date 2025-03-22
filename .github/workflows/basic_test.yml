@@ -19,6 +19,16 @@ jobs:
           channel: 'stable'
           cache: true
       
+      - name: Create .env file
+        run: |
+          mkdir -p assets
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > assets/.env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> assets/.env
+          echo "ENV=${{ secrets.ENV }}" >> assets/.env
+          echo "LOG_INFO=${{ secrets.LOG_INFO }}" >> assets/.env
+          echo "LOG_WARNING=${{ secrets.LOG_WARNING }}" >> assets/.env
+          echo "LOG_ERROR=${{ secrets.LOG_ERROR }}" >> assets/.env
+      
       - name: Install dependencies
         run: flutter pub get
       
