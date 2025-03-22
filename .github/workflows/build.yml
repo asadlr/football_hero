@@ -24,10 +24,3 @@ jobs:
       
       - name: Build APK (Debug)
         run: flutter build apk --debug
-      
-      # Use a different version of the upload-artifact action
-      - name: Upload APK
-        uses: actions/upload-artifact@v2  # Changed from v3 to v2
-        with:
-          name: debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
