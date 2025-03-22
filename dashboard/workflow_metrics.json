@@ -1,0 +1,20 @@
+{
+    "total_runs": 146,
+    "success_rate": 56.85,
+    "average_run_duration": 56.95,
+    "most_frequent_workflow": "Basic Tests",
+    "workflow_breakdowns": {
+        "Basic Tests": 38,
+        "Build APK": 27,
+        "Update CI/CD Dashboard": 22,
+        "PR Validation": 18,
+        "Localization Tests": 16,
+        "pages-build-deployment": 16,
+        "Performance Testing": 7,
+        "Scheduled Maintenance": 1,
+        "Role-Based Testing": 1
+    },
+    "recent_performance": {
+        "2025-03-22": 56.85
+    }
+}
