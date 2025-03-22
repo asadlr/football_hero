@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 generate_dashboard.py - Advanced CI/CD Dashboard Generator for FootballHero
 
@@ -313,6 +314,17 @@ class DashboardGenerator:
             # Write HTML
             with open(os.path.join(self.dashboard_dir, 'index.html'), 'w') as f:
                 f.write(html_output)
+
+            # Copy CSS file
+            css_source = '.github/templates/dashboard_styles.css'
+            css_dest = os.path.join(self.dashboard_dir, 'styles.css')
+            if os.path.exists(css_source):
+                import shutil
+                shutil.copy(css_source, css_dest)
+                logger.info(f"Copied CSS file to {css_dest}")
+            else:
+                logger.warning(f"CSS file not found at {css_source}")
+
         except Exception as e:
             logger.error(f"Error generating HTML dashboard: {e}")
             # Log full traceback for detailed debugging
