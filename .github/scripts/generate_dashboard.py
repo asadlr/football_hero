@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 generate_dashboard.py - Advanced CI/CD Dashboard Generator for FootballHero
 
