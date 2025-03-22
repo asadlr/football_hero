@@ -94,37 +94,9 @@ jobs:
         run: flutter test --coverage
       
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         if: always()
         with:
           name: coverage-report
           path: coverage/
-          retention-days: 5
-
-  performance:
-    name: Performance Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.29.2'
-          channel: 'stable'
-      
-      - name: Install dependencies
-        run: flutter pub get
-      
-      - name: Check build performance
-        run: |
-          mkdir -p performance
-          flutter build apk --debug --performance-measurement-file=performance/performance.json
-      
-      - name: Upload performance metrics
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: performance-metrics
-          path: performance/
           retention-days: 5
